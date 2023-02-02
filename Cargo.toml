@@ -1,0 +1,5 @@
+[workspace]
+members = ["hangman-client"]
+
+[profile.release]
+strip = true
