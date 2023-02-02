@@ -7,4 +7,8 @@ edition = "2021"
 
 [dependencies]
 dioxus = "0.3.1"
+fermi = "0.3.0"
 dioxus-web = "0.3.0"
+
+log = "0.4.17"
+console_log = "0.2.0"
