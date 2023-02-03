@@ -12,4 +12,4 @@ fermi = "0.3.0"
 dioxus-web = "0.3.0"
 
 log = "0.4.17"
-console_log = "0.2.0"
+console_log = { version = "0.2.0", features = ["color"] }
