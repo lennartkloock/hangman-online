@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 dioxus = "0.3.1"
+dioxus-router = { version = "0.3.0", features = ["web"] }
 fermi = "0.3.0"
 dioxus-web = "0.3.0"
 
