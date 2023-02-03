@@ -1,3 +1,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html {
+    @apply bg-slate-900 text-white;
+    font-size: 32px;
+}
+
+#main {
+    @apply h-screen;
+}
