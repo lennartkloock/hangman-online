@@ -19,6 +19,7 @@ fn root(cx: Scope) -> Element {
     let value = use_state(cx, || "");
 
     cx.render(rsx!(
+        style { include_str!("../out/output.css") }
         h1 { "Hangman" }
         Word { word: "Hangman" }
         form {
