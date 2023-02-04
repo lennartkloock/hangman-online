@@ -31,14 +31,19 @@ pub fn LinkButton<'a>(cx: Scope<'a, LinkButtonProps<'a>>) -> Element<'a> {
 #[derive(Props)]
 pub struct MaterialButtonProps<'a> {
     name: &'a str,
-    onclick: EventHandler<'a, MouseEvent>,
+    onclick: Option<EventHandler<'a, MouseEvent>>,
 }
 
 pub fn MaterialButton<'a>(cx: Scope<'a, MaterialButtonProps<'a>>) -> Element<'a> {
     cx.render(rsx!(
         button {
             class: "material-button",
-            onclick: move |evt| cx.props.onclick.call(evt),
+            r#type: "submit",
+            onclick: move |evt| {
+                if let Some(h) = &cx.props.onclick {
+                    h.call(evt);
+                }
+            },
             MaterialIcon {
                 name: cx.props.name,
                 color: MaterialIconColor::Light,
