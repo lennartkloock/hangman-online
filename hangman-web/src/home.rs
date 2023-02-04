@@ -1,7 +1,7 @@
 use crate::components::{CenterContainer, LinkButton};
 use dioxus::prelude::*;
-use std::time::Duration;
 use dioxus_router::Link;
+use std::time::Duration;
 
 pub fn Home(cx: Scope) -> Element {
     let title = use_state(cx, || animate_title(0).unwrap());

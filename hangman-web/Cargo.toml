@@ -9,6 +9,7 @@ edition = "2021"
 dioxus = "0.3.1"
 dioxus-router = { version = "0.3.0", features = ["web"] }
 fermi = "0.3.0"
+dioxus-material-icons = "1.0.2"
 dioxus-web = "0.3.0"
 
 log = "0.4.17"

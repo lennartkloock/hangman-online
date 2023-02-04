@@ -2,10 +2,12 @@
 
 use crate::components::{CenterContainer, LinkButton};
 use dioxus::prelude::*;
+use dioxus_material_icons::MaterialIconStylesheet;
 use dioxus_router::{Route, Router};
 use fermi::use_init_atom_root;
 
 mod components;
+mod create_lobby;
 mod game;
 mod home;
 
@@ -19,9 +21,11 @@ fn App(cx: Scope) -> Element {
 
     cx.render(rsx!(
         Router {
+            MaterialIconStylesheet {}
             style { include_str!("../out/output.css") } // TailwindCSS styles
             Route { to: "/", home::Home {} }
-            Route { to: "/game", game::game {} }
+            Route { to: "/create", create_lobby::CreateLobby {} }
+            // Route { to: "/game", game::game {} }
             Route { to: "", NotFound {} }
         }
     ))
