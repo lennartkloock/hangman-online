@@ -10,6 +10,7 @@ mod components;
 mod create_lobby;
 mod game;
 mod home;
+mod join_lobby;
 
 fn main() {
     console_log::init_with_level(log::Level::Trace).expect("Error initializing logger");
@@ -25,6 +26,7 @@ fn App(cx: Scope) -> Element {
             style { include_str!("../out/output.css") } // TailwindCSS styles
             Route { to: "/", home::Home {} }
             Route { to: "/create", create_lobby::CreateLobby {} }
+            Route { to: "/join", join_lobby::JoinLobby {} }
             // Route { to: "/game", game::game {} }
             Route { to: "", NotFound {} }
         }

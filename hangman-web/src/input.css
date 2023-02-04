@@ -10,3 +10,19 @@ html {
 #main {
     @apply h-screen;
 }
+
+.button {
+    @apply font-light text-lg text-center bg-zinc-700 shadow-lg rounded-md px-2 py-1 transition-all hover:ring ring-zinc-500;
+}
+
+.material-button {
+    @apply flex items-center rounded-full p-1 transition-colors hover:bg-zinc-600;
+}
+
+.input {
+    @apply bg-zinc-700 p-1 w-full rounded transition-all focus:ring ring-zinc-500 outline-0;
+}
+
+.input-mono {
+    @apply input font-mono;
+}
