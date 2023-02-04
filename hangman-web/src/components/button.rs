@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 use dioxus_router::Link;
 
 const BUTTON_CLASSES: &str =
-    "font-light text-lg text-black text-center bg-white shadow-lg rounded-md px-2 py-1";
+    "font-light text-lg text-center bg-zinc-700 shadow-lg rounded-md px-2 py-1";
 
 #[inline_props]
 pub fn Button<'a>(cx: Scope<'a>, children: Element<'a>) -> Element<'a> {
