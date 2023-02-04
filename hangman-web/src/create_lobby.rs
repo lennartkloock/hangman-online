@@ -1,17 +1,14 @@
-use crate::components::{CenterContainer, MaterialButton, MaterialLinkButton};
+use crate::components::{CenterContainer, Form, FormTopBar, MaterialButton, MaterialLinkButton};
 use dioxus::prelude::*;
 
 pub fn CreateLobby(cx: Scope) -> Element {
     cx.render(rsx!(
         CenterContainer {
-            form {
-                class: "form",
-                prevent_default: "onsubmit",
+            Form {
                 onsubmit: move |_| {
                     log::info!("Create");
                 },
-                div {
-                    class: "form-top-bar",
+                FormTopBar {
                     MaterialLinkButton { name: "arrow_back", to: "/" }
                     span {
                         class: "font-light",

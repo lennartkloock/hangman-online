@@ -1,7 +1,7 @@
-use crate::components::{CenterContainer, MaterialButton, MaterialLinkButton};
+use crate::components::{CenterContainer, Form, FormTopBar, MaterialButton, MaterialLinkButton};
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
-use dioxus_router::{use_route, use_router, Redirect};
+use dioxus_router::{use_route, use_router};
 
 pub fn JoinLobby(cx: Scope) -> Element {
     let route = use_route(cx);
@@ -14,16 +14,12 @@ pub fn JoinLobby(cx: Scope) -> Element {
 
     cx.render(rsx!(
         CenterContainer {
-            // TODO: Put form and form top bar in components
-            form {
-                class: "form",
-                prevent_default: "onsubmit",
+            Form {
                 onsubmit: move |_| {
                     log::debug!("Done");
                     router.navigate_to("/game");
                 },
-                div {
-                    class: "form-top-bar",
+                FormTopBar {
                     MaterialLinkButton { name: "arrow_back", to: "/" }
                     span {
                         class: "font-light",

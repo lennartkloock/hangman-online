@@ -11,14 +11,6 @@ html {
     @apply h-screen;
 }
 
-.form {
-    @apply bg-zinc-800 rounded-xl w-80 max-w-[80%];
-}
-
-.form-top-bar {
-    @apply bg-zinc-700 rounded-t-xl p-2 flex justify-between items-center;
-}
-
 .button {
     @apply font-light text-lg text-center bg-zinc-700 shadow-lg rounded-md px-2 py-1 transition-all hover:ring ring-zinc-500;
 }
