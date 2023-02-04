@@ -1,6 +1,7 @@
 use crate::components::{CenterContainer, LinkButton};
 use dioxus::prelude::*;
 use std::time::Duration;
+use dioxus_router::Link;
 
 pub fn home(cx: Scope) -> Element {
     let title = use_state(cx, || animate_title(0).unwrap());
@@ -31,6 +32,12 @@ pub fn home(cx: Scope) -> Element {
                     LinkButton { to: "/join", "Join Lobby" }
                 }
             }
+        }
+        Link {
+            class: "absolute bottom-1 right-1 font-extralight underline hover:no-underline text-xs",
+            to: "https://github.com/lennartkloock/hangman-online",
+            external: true,
+            "Open-source software by Lennart Kloock"
         }
     ))
 }
