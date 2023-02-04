@@ -14,15 +14,16 @@ pub fn JoinLobby(cx: Scope) -> Element {
 
     cx.render(rsx!(
         CenterContainer {
+            // TODO: Put form and form top bar in components
             form {
-                class: "bg-zinc-800 rounded-xl w-80 max-w-[80%]",
+                class: "form",
                 prevent_default: "onsubmit",
                 onsubmit: move |_| {
                     log::debug!("Done");
                     router.navigate_to("/game");
                 },
                 div {
-                    class: "bg-zinc-700 rounded-t-xl p-2 flex justify-between items-center",
+                    class: "form-top-bar",
                     MaterialLinkButton { name: "arrow_back", to: "/" }
                     span {
                         class: "font-light",

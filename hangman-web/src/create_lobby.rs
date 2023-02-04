@@ -4,16 +4,20 @@ use dioxus::prelude::*;
 pub fn CreateLobby(cx: Scope) -> Element {
     cx.render(rsx!(
         CenterContainer {
-            div {
-                class: "bg-zinc-800 rounded-xl w-80 max-w-[80%]",
+            form {
+                class: "form",
+                prevent_default: "onsubmit",
+                onsubmit: move |_| {
+                    log::info!("Create");
+                },
                 div {
-                    class: "bg-zinc-700 rounded-t-xl p-2 flex justify-between items-center",
+                    class: "form-top-bar",
                     MaterialLinkButton { name: "arrow_back", to: "/" }
                     span {
                         class: "font-light",
                         "Create Lobby"
                     }
-                    MaterialButton { name: "done", onclick: move |_| log::debug!("Done") }
+                    MaterialButton { name: "done" }
                 }
                 div {
                     class: "m-2",
