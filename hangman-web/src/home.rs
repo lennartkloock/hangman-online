@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 use std::time::Duration;
 use dioxus_router::Link;
 
-pub fn home(cx: Scope) -> Element {
+pub fn Home(cx: Scope) -> Element {
     let title = use_state(cx, || animate_title(0).unwrap());
 
     use_future(cx, (), |_| {

@@ -20,7 +20,7 @@ fn App(cx: Scope) -> Element {
     cx.render(rsx!(
         Router {
             style { include_str!("../out/output.css") } // TailwindCSS styles
-            Route { to: "/", home::home {} }
+            Route { to: "/", home::Home {} }
             Route { to: "/game", game::game {} }
             Route { to: "", NotFound {} }
         }
