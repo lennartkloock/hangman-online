@@ -42,7 +42,7 @@ pub fn game(cx: Scope) -> Element {
                 }
                 Word { word: "Hangman" }
                 div {
-                    class: "flex flex-col gap-0 max-w-96 w-4/5",
+                    class: "flex flex-col gap-0 max-w-sm w-4/5",
                     div {
                         class: "bg-zinc-800 rounded-t-lg overflow-y-scroll px-2 py-1 font-light flex flex-col-reverse h-64",
                         chat_messages
