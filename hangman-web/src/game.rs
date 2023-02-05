@@ -20,7 +20,7 @@ pub fn game(cx: Scope) -> Element {
 
     cx.render(rsx!(
         div {
-            class: "absolute top-2 left-2 flex items-center gap-1",
+            class: "absolute top-2 left-2 flex items-center gap-1 p-1",
             span { class: "font-mono text-xl", "0XUA" }
             MaterialButton { name: "content_copy" }
         }
@@ -35,14 +35,14 @@ pub fn game(cx: Scope) -> Element {
         }
         CenterContainer {
             div {
-                class: "flex flex-col gap-8 items-center",
+                class: "flex flex-col gap-8 items-center w-full",
                 h1 {
                     class: "text-xl font-light",
                     "GUESS THE WORD"
                 }
                 Word { word: "Hangman" }
                 div {
-                    class: "flex flex-col gap-0 w-96",
+                    class: "flex flex-col gap-0 max-w-96 w-4/5",
                     div {
                         class: "bg-zinc-800 rounded-t-lg overflow-y-scroll px-2 py-1 font-light flex flex-col-reverse h-64",
                         chat_messages
