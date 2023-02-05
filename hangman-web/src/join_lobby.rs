@@ -33,7 +33,7 @@ pub fn JoinLobby(cx: Scope) -> Element {
                         class: "flex items-center gap-2",
                         MaterialIcon { name: "numbers", color: MaterialIconColor::Light, size: 42 }
                         input {
-                            class: "input-mono",
+                            class: "input p-1 w-full rounded font-mono",
                             placeholder: "Code",
                             minlength: 4,
                             maxlength: 4,
@@ -45,7 +45,7 @@ pub fn JoinLobby(cx: Scope) -> Element {
                         class: "flex items-center gap-2",
                         MaterialIcon { name: "account_circle", color: MaterialIconColor::Light, size: 42 }
                         input {
-                            class: "input",
+                            class: "input p-1 w-full rounded",
                             placeholder: "Enter your name",
                             required: true,
                         }
