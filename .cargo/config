@@ -1,0 +1,2 @@
+[build]
+rustflags = "--cfg=web_sys_unstable_apis" # To use Clipboard in web_sys: https://docs.rs/web-sys/latest/web_sys/struct.Clipboard.html

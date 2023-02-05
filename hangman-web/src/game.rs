@@ -1,6 +1,7 @@
 use crate::components::{CenterContainer, MaterialButton};
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
+use dioxus_router::use_router;
 use fermi::prelude::*;
 use log::debug;
 
@@ -10,6 +11,8 @@ pub fn game(cx: Scope) -> Element {
     let letters = use_atom_ref(cx, LETTERS);
 
     let value = use_state(cx, || "");
+
+    let router = use_router(cx);
 
     let read = letters.read();
     let chat_messages = read.iter().rev().map(|l| {
@@ -22,7 +25,19 @@ pub fn game(cx: Scope) -> Element {
         div {
             class: "absolute top-2 left-2 flex items-center gap-1 p-1",
             span { class: "font-mono text-xl", "0XUA" }
-            MaterialButton { name: "content_copy" }
+            MaterialButton { name: "content_copy", onclick: move |_| {
+                // TODO: Provide feedback to the user
+                if let Some(c) = web_sys::window().and_then(|w| w.navigator().clipboard()) {
+                    let mut url = router.current_location().url.clone();
+                    url.set_path("/join/0XUA");
+                    cx.spawn(async move {
+                        if wasm_bindgen_futures::JsFuture::from(c.write_text(url.as_str())).await.is_err() {
+                            // Write failed, no permission
+                            todo!();
+                        }
+                    });
+                }
+            } }
         }
         div {
             class: "absolute top-2 right-2 flex items-center gap-1",
