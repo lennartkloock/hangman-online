@@ -14,6 +14,7 @@ mod join_lobby;
 
 fn main() {
     console_log::init_with_level(log::Level::Trace).expect("Error initializing logger");
+    log::info!("Starting app...");
     dioxus_web::launch(App);
 }
 
@@ -23,7 +24,6 @@ fn App(cx: Scope) -> Element {
     cx.render(rsx!(
         Router {
             MaterialIconStylesheet {}
-            style { include_str!("../out/output.css") } // TailwindCSS styles
             Route { to: "/", home::Home {} }
             Route { to: "/create", create_lobby::CreateLobby {} }
             Route { to: "/join", join_lobby::JoinLobby {} }

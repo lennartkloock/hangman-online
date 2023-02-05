@@ -6,7 +6,7 @@ fn main() {
         .arg("-i")
         .arg("./src/input.css")
         .arg("-o")
-        .arg("./out/output.css")
+        .arg("./public/tw-out.css")
         .output()
         .expect("Error running tailwindcss");
 }

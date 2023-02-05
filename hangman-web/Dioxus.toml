@@ -1,0 +1,15 @@
+[application]
+name = "hangman-online"
+default_platform = "web"
+out_dir = "dist"
+asset_dir = "public"
+
+[web.app]
+title = "Hangman"
+
+[web.watcher]
+
+[web.resource]
+style = ["/tw-out.css"]
+
+[web.resource.dev]
