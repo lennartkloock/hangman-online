@@ -20,5 +20,5 @@ html {
 }
 
 .input {
-    @apply bg-zinc-700 transition-all focus:ring ring-zinc-500 outline-0;
+    @apply bg-zinc-700 transition-all focus:ring ring-zinc-500 outline-transparent;
 }
