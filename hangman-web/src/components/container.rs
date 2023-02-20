@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 #[inline_props]
 pub fn CenterContainer<'a>(cx: Scope<'a>, children: Element<'a>) -> Element<'a> {
     cx.render(rsx!(div {
-        class: "h-full flex justify-center items-center",
+        class: "h-full flex flex-col justify-center items-center",
         children
     }))
 }
