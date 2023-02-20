@@ -1,12 +1,12 @@
-use crate::components::Error;
+use crate::components::{CenterContainer, Error};
 use dioxus::prelude::*;
 use dioxus_router::use_route;
 use std::{
+    convert::Infallible,
     fmt::{Display, Formatter},
     num::ParseIntError,
     str::FromStr,
 };
-use std::convert::Infallible;
 
 mod ongoing_game;
 
@@ -47,7 +47,7 @@ pub fn Game(cx: Scope) -> Element {
 
     let code = route.parse_segment::<GameCode>("code");
 
-    match code {
+    let content = match code {
         Some(Ok(code)) => cx.render(rsx!(
             div {
                 "Game {code}"
@@ -57,8 +57,11 @@ pub fn Game(cx: Scope) -> Element {
             title: "Invalid code",
             error: e
         })),
-        None => cx.render(rsx!(Error::<Infallible> {// Any type that implements Error
+        None => cx.render(rsx!(Error::<Infallible> {
+            // Any type that implements Error
             title: "No code"
         })),
-    }
+    };
+
+    cx.render(rsx!(CenterContainer { content }))
 }

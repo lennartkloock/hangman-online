@@ -1,4 +1,3 @@
-use crate::components::CenterContainer;
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use log::error;
@@ -17,7 +16,7 @@ pub fn Error<'a, E: Error>(cx: Scope<'a, ErrorProps<'a, E>>) -> Element<'a> {
                 class: "text-xs hover:underline",
                 onclick: move |_| {
                     if let Some(w) = web_sys::window() {
-                        if let Err(e) = w.alert_with_message(&format!("Error: {}", e)) {
+                        if let Err(e) = w.alert_with_message(&format!("Error: {e}")) {
                             error!("Error calling window.alert: {:?}", e);
                         }
                     }
@@ -28,13 +27,11 @@ pub fn Error<'a, E: Error>(cx: Scope<'a, ErrorProps<'a, E>>) -> Element<'a> {
     });
 
     cx.render(rsx!(
-        CenterContainer {
-            MaterialIcon { name: "warning", color: MaterialIconColor::Light, size: 200 }
-            h1 {
-                class: "text-4xl",
-                "{cx.props.title}"
-            }
-            details
+        MaterialIcon { name: "warning", color: MaterialIconColor::Light, size: 200 }
+        h1 {
+            class: "text-4xl",
+            "{cx.props.title}"
         }
+        details
     ))
 }
