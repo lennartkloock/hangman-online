@@ -15,8 +15,13 @@ pub fn JoinLobby(cx: Scope) -> Element {
     cx.render(rsx!(
         CenterContainer {
             Form {
-                onsubmit: move |_| {
-                    log::debug!("Done");
+                onsubmit: move |e: FormEvent| {
+                    // TODO: Provide feedback to the user
+                    if let Some(nickname) = e.data.values.get("nickname") {
+                        if let Some(local_storage) = web_sys::window().and_then(|w| w.local_storage().ok()).flatten() {
+                            local_storage.set_item("hangman_user", nickname).unwrap();
+                        }
+                    }
                     router.navigate_to("/game");
                 },
                 FormTopBar {
@@ -38,6 +43,7 @@ pub fn JoinLobby(cx: Scope) -> Element {
                             minlength: 4,
                             maxlength: 4,
                             required: true,
+                            name: "code",
                             value: "{code}",
                         }
                     }
@@ -48,6 +54,7 @@ pub fn JoinLobby(cx: Scope) -> Element {
                             class: "input p-1 w-full rounded",
                             placeholder: "Enter your name",
                             required: true,
+                            name: "nickname",
                         }
                     }
                 }

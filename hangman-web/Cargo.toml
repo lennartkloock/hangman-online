@@ -12,9 +12,10 @@ fermi = "0.3.0"
 dioxus-material-icons = "1.0.2"
 dioxus-web = "0.3.0"
 
+thiserror = "1.0.38"
 log = "0.4.17"
 console_log = { version = "0.2.0", features = ["color"] }
 
-web-sys = { version = "0.3.61", features = ["Window", "Navigator", "Clipboard"] }
+web-sys = { version = "0.3.61", features = ["Window", "Navigator", "Clipboard", "Storage"] }
 wasm-bindgen-futures = "0.4.34"
 gloo-timers = { version = "0.2.6", features = ["futures"] }
