@@ -23,7 +23,7 @@ pub fn Home(cx: Scope) -> Element {
             div {
                 class: "flex flex-col gap-8 items-center",
                 span {
-                    class: "font-mono font-bold drop-shadow-2xl text-6xl tracking-widest",
+                    class: "font-mono font-bold drop-shadow-2xl text-7xl tracking-widest",
                     "{title}"
                 }
                 div {
