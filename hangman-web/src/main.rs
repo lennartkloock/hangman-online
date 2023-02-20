@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
-use std::convert::Infallible;
 use crate::components::{CenterContainer, Error, LinkButton};
 use dioxus::prelude::*;
 use dioxus_material_icons::MaterialIconStylesheet;
 use dioxus_router::{Route, Router};
 use fermi::use_init_atom_root;
+use std::convert::Infallible;
 
 mod components;
 mod create_lobby;
