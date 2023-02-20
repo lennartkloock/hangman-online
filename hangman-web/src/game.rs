@@ -1,114 +1,64 @@
-use crate::components::{CenterContainer, MaterialButton};
+use crate::components::Error;
 use dioxus::prelude::*;
-use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
-use dioxus_router::use_router;
-use fermi::prelude::*;
-use log::debug;
+use dioxus_router::use_route;
+use std::{
+    fmt::{Display, Formatter},
+    num::ParseIntError,
+    str::FromStr,
+};
+use std::convert::Infallible;
 
-static LETTERS: AtomRef<Vec<char>> = |_| vec![];
+mod ongoing_game;
 
-pub fn game(cx: Scope) -> Element {
-    let letters = use_atom_ref(cx, LETTERS);
+/// Two bytes that represent a game code
+///
+/// 4 characters encoded in hex
+struct GameCode(u16);
 
-    let value = use_state(cx, || "");
+#[derive(thiserror::Error, Debug)]
+enum ParseGameCodeError {
+    #[error("game code must be 4 characters long")]
+    TooShort,
+    #[error("invalid game code: {0}")]
+    ParseIntError(#[from] ParseIntError),
+}
 
-    let router = use_router(cx);
+impl FromStr for GameCode {
+    type Err = ParseGameCodeError;
 
-    let read = letters.read();
-    let chat_messages = read.iter().rev().map(|l| {
-        cx.render(rsx!(
-            p { "{l}" }
-        ))
-    });
-
-    cx.render(rsx!(
-        div {
-            class: "absolute top-2 left-2 flex items-center gap-1 p-1",
-            span { class: "font-mono text-xl", "0XUA" }
-            MaterialButton { name: "content_copy", onclick: move |_| {
-                // TODO: Provide feedback to the user
-                if let Some(c) = web_sys::window().and_then(|w| w.navigator().clipboard()) {
-                    let mut url = router.current_location().url.clone();
-                    url.set_path("/join/0XUA");
-                    cx.spawn(async move {
-                        if wasm_bindgen_futures::JsFuture::from(c.write_text(url.as_str())).await.is_err() {
-                            // Write failed, no permission
-                            todo!();
-                        }
-                    });
-                }
-            } }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 4 {
+            return Err(ParseGameCodeError::TooShort);
         }
-        div {
-            class: "absolute top-2 right-2 flex items-center gap-1",
-            button {
-                class: "material-button gap-1 bg-zinc-700",
-                MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
-                span { "German" }
-            }
-            MaterialButton { name: "settings" }
-        }
-        CenterContainer {
+        u16::from_str_radix(s, 16)
+            .map(Self)
+            .map_err(ParseGameCodeError::from)
+    }
+}
+
+impl Display for GameCode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub fn Game(cx: Scope) -> Element {
+    let route = use_route(cx);
+
+    let code = route.parse_segment::<GameCode>("code");
+
+    match code {
+        Some(Ok(code)) => cx.render(rsx!(
             div {
-                class: "flex flex-col gap-8 items-center w-full",
-                h1 {
-                    class: "text-xl font-light",
-                    "GUESS THE WORD"
-                }
-                Word { word: "Hangman" }
-                div {
-                    class: "flex flex-col gap-0 max-w-sm w-4/5",
-                    div {
-                        class: "bg-zinc-800 rounded-t-lg overflow-y-scroll px-2 py-1 font-light flex flex-col-reverse h-64",
-                        chat_messages
-                    }
-                    form {
-                        class: "w-full",
-                        prevent_default: "onsubmit",
-                        onsubmit: move |evt| {
-                            debug!("On submit: {:?}", evt);
-                            if let Some(c) = evt.values.get("letter").and_then(|s| s.chars().next()) {
-                                letters.write().push(c.to_ascii_uppercase());
-                                value.set("");
-                            }
-                        },
-                        input {
-                            class: "input w-full px-2 py-1 rounded-b-lg font-light",
-                            r#type: "text",
-                            name: "letter",
-                            placeholder: "Guess something...",
-                            value: "{value}",
-                        }
-                    }
-                }
+                "Game {code}"
             }
-        }
-    ))
-}
-
-#[derive(Props)]
-struct WordProps<'a> {
-    word: &'a str,
-}
-
-fn Word<'a>(cx: Scope<'a, WordProps<'a>>) -> Element<'a> {
-    let letters = use_atom_ref(cx, LETTERS);
-
-    let rendered_word: String = cx
-        .props
-        .word
-        .chars()
-        .map(|c| {
-            if letters.read().contains(&c.to_ascii_uppercase()) {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-
-    cx.render(rsx!(p {
-        class: "text-6xl font-mono tracking-[.25em]",
-        rendered_word
-    }))
+        )),
+        Some(Err(e)) => cx.render(rsx!(Error {
+            title: "Invalid code",
+            error: e
+        })),
+        None => cx.render(rsx!(Error::<Infallible> {// Any type that implements Error
+            title: "No code"
+        })),
+    }
 }
