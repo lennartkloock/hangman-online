@@ -4,7 +4,7 @@
 
 html {
     @apply bg-zinc-900 text-white;
-    font-size: 26px;
+    font-size: 22px;
 }
 
 #main {
