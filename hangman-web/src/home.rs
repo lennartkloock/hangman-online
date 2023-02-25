@@ -1,6 +1,7 @@
 use crate::components::{CenterContainer, LinkButton};
 use dioxus::prelude::*;
-use dioxus_router::Link;
+use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
+use dioxus_router::{use_router, Link};
 use std::time::Duration;
 
 pub fn Home(cx: Scope) -> Element {
@@ -29,7 +30,7 @@ pub fn Home(cx: Scope) -> Element {
                 div {
                     class: "flex flex-col gap-4",
                     LinkButton { to: "/create", "Create Lobby" }
-                    LinkButton { to: "/join", "Join Lobby" }
+                    JoinButton {}
                 }
             }
         }
@@ -52,4 +53,68 @@ fn animate_title(step: u32) -> Option<String> {
         5 => Some("Hangman".to_string()),
         _ => None,
     }
+}
+
+fn JoinButton(cx: Scope) -> Element {
+    let router = use_router(cx);
+
+    let focused = use_state(cx, || false);
+    let len = use_state(cx, || 0);
+
+    let active = *focused.get() || *len.get() > 0;
+
+    let classes = format!(
+        "button w-full {}",
+        if active {
+            // "!" to mark text-left as important to override button class
+            "!text-left font-mono"
+        } else {
+            "placeholder:text-white"
+        }
+    );
+
+    cx.render(rsx!(
+        form {
+            class: "relative",
+            prevent_default: "onsubmit",
+            onsubmit: move |e| {
+                if let Some(code) = e.values.get("code") {
+                    router.navigate_to(&format!("/game/{code}"));
+                }
+            },
+            input {
+                class: "{classes}",
+                r#type: "text",
+                name: "code",
+                placeholder: if active { "Code" } else { "Join Lobby" },
+                value: "",
+                minlength: 4,
+                maxlength: 4,
+                size: 4,
+                pattern: "[a-fA-F\\d]{{4}}",
+                onfocusin: move |_| {
+                    focused.set(true);
+                },
+                onfocusout: move |_| {
+                    focused.set(false);
+                },
+                oninput: move |e| {
+                    len.set(e.value.len());
+                }
+            }
+            if active {
+                rsx!(
+                    button {
+                        class: "material-button absolute top-1 bottom-1 right-0.5",
+                        r#type: "submit",
+                        MaterialIcon {
+                            name: "arrow_forward",
+                            color: MaterialIconColor::Light,
+                            size: 35,
+                        }
+                    }
+                )
+            }
+        }
+    ))
 }

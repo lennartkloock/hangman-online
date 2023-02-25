@@ -27,8 +27,6 @@ fn App(cx: Scope) -> Element {
             MaterialIconStylesheet {}
             Route { to: "/", home::Home {} }
             Route { to: "/create", create_lobby::CreateLobby {} }
-            // Route { to: "/join", join_lobby::JoinLobby {} }
-            // Route { to: "/join/:code", join_lobby::JoinLobby {} }
             Route { to: "/game/:code", game::Game {} }
             Route { to: "", NotFound {} }
         }
