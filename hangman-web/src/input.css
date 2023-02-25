@@ -22,3 +22,11 @@ html {
 .input {
     @apply bg-zinc-700 transition-all focus:ring ring-zinc-500 outline-transparent;
 }
+
+.game-container {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas:
+        ". title ."
+        ". word ."
+        "players chat hangman";
+}

@@ -1,4 +1,7 @@
-use crate::components::{CenterContainer, Error};
+use crate::{
+    components::{CenterContainer, Error},
+    game::ongoing_game::OngoingGame,
+};
 use dioxus::prelude::*;
 use dioxus_router::use_route;
 use std::{
@@ -13,10 +16,11 @@ mod ongoing_game;
 /// Two bytes that represent a game code
 ///
 /// 4 characters encoded in hex
-struct GameCode(u16);
+#[derive(PartialEq)]
+pub struct GameCode(u16);
 
 #[derive(thiserror::Error, Debug)]
-enum ParseGameCodeError {
+pub enum ParseGameCodeError {
     #[error("game code must be 4 characters long")]
     TooShort,
     #[error("invalid game code: {0}")]
@@ -38,7 +42,7 @@ impl FromStr for GameCode {
 
 impl Display for GameCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{:04X}", self.0)
     }
 }
 
@@ -47,21 +51,19 @@ pub fn Game(cx: Scope) -> Element {
 
     let code = route.parse_segment::<GameCode>("code");
 
-    let content = match code {
-        Some(Ok(code)) => cx.render(rsx!(
-            div {
-                "Game {code}"
+    match code {
+        Some(Ok(code)) => cx.render(rsx!(OngoingGame { code: code })),
+        Some(Err(e)) => cx.render(rsx!(CenterContainer {
+            Error {
+                title: "Invalid code",
+                error: e
             }
-        )),
-        Some(Err(e)) => cx.render(rsx!(Error {
-            title: "Invalid code",
-            error: e
         })),
-        None => cx.render(rsx!(Error::<Infallible> {
+        None => cx.render(rsx!(CenterContainer {
             // Any type that implements Error
-            title: "No code"
+            Error::<Infallible> {
+                title: "No code"
+            }
         })),
-    };
-
-    cx.render(rsx!(CenterContainer { content }))
+    }
 }
