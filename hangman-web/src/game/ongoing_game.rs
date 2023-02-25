@@ -1,12 +1,11 @@
 use crate::{
-    components::{CenterContainer, MaterialButton},
+    components::MaterialButton,
     game::GameCode,
 };
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use fermi::prelude::*;
-use log::debug;
 
 static LETTERS: AtomRef<Vec<char>> = |_| vec![];
 
@@ -40,7 +39,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode) -> Element<'a> {
         // TODO: Provide feedback to the user
         if let Some(c) = web_sys::window().and_then(|w| w.navigator().clipboard()) {
             let mut url = router.current_location().url.clone();
-            url.set_path(&format!("/game/{}", code));
+            url.set_path(&format!("/game/{code}"));
             cx.spawn(async move {
                 if wasm_bindgen_futures::JsFuture::from(c.write_text(url.as_str()))
                     .await
