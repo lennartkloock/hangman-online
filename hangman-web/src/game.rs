@@ -64,26 +64,22 @@ pub fn Game(cx: Scope) -> Element {
         (Some(Ok(code)), Ok(Some(_user))) => cx.render(rsx!(OngoingGame { code: code })),
 
         // Invalid game code
-        (Some(Err(e)), _) => cx.render(rsx!(CenterContainer {
-            Error {
-                title: "Invalid code",
-                error: e
-            }
+        (Some(Err(e)), _) => cx.render(rsx!(Error {
+            title: "Invalid code",
+            error: e
         })),
         // No game code found
-        (None, _) => cx.render(rsx!(CenterContainer {
+        (None, _) => cx.render(rsx!(
             // Any type that implements Error
-            Error::<Infallible> {
-                title: "No code"
-            }
-        })),
+            Error::<Infallible> { title: "No code" }
+        )),
 
         // No saved user
         (_, Ok(None)) => cx.render(rsx!(CreateUser {})),
         // Erroneous user
-        (_, Err(e)) => cx.render(rsx!(CenterContainer { Error {
+        (_, Err(e)) => cx.render(rsx!(Error {
             title: "Failed to load user",
             error: e
-        }})),
+        })),
     }
 }

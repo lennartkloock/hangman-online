@@ -1,3 +1,4 @@
+use crate::components::CenterContainer;
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use log::error;
@@ -27,11 +28,13 @@ pub fn Error<'a, E: Error>(cx: Scope<'a, ErrorProps<'a, E>>) -> Element<'a> {
     });
 
     cx.render(rsx!(
-        MaterialIcon { name: "warning", color: MaterialIconColor::Light, size: 200 }
-        h1 {
-            class: "text-4xl",
-            "{cx.props.title}"
+        CenterContainer {
+            MaterialIcon { name: "warning", color: MaterialIconColor::Light, size: 200 }
+            h1 {
+                class: "text-4xl",
+                "{cx.props.title}"
+            }
+            details
         }
-        details
     ))
 }

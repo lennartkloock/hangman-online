@@ -14,10 +14,10 @@ pub fn CreateUser(cx: Scope) -> Element {
     let error = use_state(cx, || None);
 
     if let Some(err) = error.get() {
-        cx.render(rsx!(CenterContainer { Error {
+        cx.render(rsx!(Error {
             title: "Failed to create user",
             error: err
-        }}))
+        }))
     } else {
         cx.render(rsx!(
         CenterContainer {
