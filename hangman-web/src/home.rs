@@ -69,7 +69,7 @@ fn JoinButton(cx: Scope) -> Element {
             // "!" to mark text-left as important to override button class
             "!text-left font-mono"
         } else {
-            "placeholder:text-white"
+            "placeholder:text-white cursor-pointer"
         }
     );
 

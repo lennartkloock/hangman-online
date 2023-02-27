@@ -12,7 +12,7 @@ html {
 }
 
 .button {
-    @apply font-light text-xl text-center bg-zinc-700 shadow-lg rounded-md px-2 py-1 transition-all hover:ring ring-zinc-500 cursor-pointer;
+    @apply font-light text-xl text-center bg-zinc-700 shadow-lg rounded-md px-2 py-1 transition-all hover:ring ring-zinc-500;
 }
 
 .material-button {
