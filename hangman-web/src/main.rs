@@ -11,10 +11,15 @@ mod components;
 mod create_lobby;
 mod game;
 mod home;
-mod join_lobby;
+mod storage;
 
 fn main() {
-    console_log::init_with_level(log::Level::Trace).expect("Error initializing logger");
+    let log_level = if cfg!(debug_assertions) {
+        log::Level::Trace
+    } else {
+        log::Level::Warn
+    };
+    console_log::init_with_level(log_level).expect("Error initializing logger");
     log::info!("Starting app...");
     dioxus_web::launch(App);
 }
