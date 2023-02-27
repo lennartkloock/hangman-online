@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::components::{CenterContainer, Error, LinkButton};
+use crate::components::Error;
 use dioxus::prelude::*;
 use dioxus_material_icons::MaterialIconStylesheet;
 use dioxus_router::{Route, Router};
@@ -39,10 +39,5 @@ fn App(cx: Scope) -> Element {
 }
 
 fn NotFound(cx: Scope) -> Element {
-    cx.render(rsx!(
-        CenterContainer {
-            Error::<Infallible> { title: "Not Found" }
-            LinkButton { to: "/", "Return home" }
-        }
-    ))
+    cx.render(rsx!(Error::<Infallible> { title: "Not Found" }))
 }
