@@ -1,16 +1,21 @@
 use crate::{
     components::{CenterContainer, Error},
-    game::ongoing_game::OngoingGame,
+    game::{create_user::CreateUser, ongoing_game::OngoingGame},
+    storage,
+    storage::{StorageError, User},
 };
 use dioxus::prelude::*;
 use dioxus_router::use_route;
+use fermi::{use_read, Atom};
 use std::{
     convert::Infallible,
     fmt::{Display, Formatter},
     num::ParseIntError,
     str::FromStr,
 };
+use thiserror::Error;
 
+mod create_user;
 mod ongoing_game;
 
 /// Two bytes that represent a game code
@@ -19,7 +24,7 @@ mod ongoing_game;
 #[derive(PartialEq)]
 pub struct GameCode(u16);
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug, Error)]
 pub enum ParseGameCodeError {
     #[error("game code must be 4 characters long")]
     TooShort,
@@ -46,24 +51,39 @@ impl Display for GameCode {
     }
 }
 
+static USER: Atom<Result<Option<User>, StorageError>> = |_| storage::load::<User>("hangman_user");
+
 pub fn Game(cx: Scope) -> Element {
     let route = use_route(cx);
 
     let code = route.parse_segment::<GameCode>("code");
+    let user = use_read(cx, USER);
 
-    match code {
-        Some(Ok(code)) => cx.render(rsx!(OngoingGame { code: code })),
-        Some(Err(e)) => cx.render(rsx!(CenterContainer {
+    match (code, user) {
+        // Render game
+        (Some(Ok(code)), Ok(Some(_user))) => cx.render(rsx!(OngoingGame { code: code })),
+
+        // Invalid game code
+        (Some(Err(e)), _) => cx.render(rsx!(CenterContainer {
             Error {
                 title: "Invalid code",
                 error: e
             }
         })),
-        None => cx.render(rsx!(CenterContainer {
+        // No game code found
+        (None, _) => cx.render(rsx!(CenterContainer {
             // Any type that implements Error
             Error::<Infallible> {
                 title: "No code"
             }
         })),
+
+        // No saved user
+        (_, Ok(None)) => cx.render(rsx!(CreateUser {})),
+        // Erroneous user
+        (_, Err(e)) => cx.render(rsx!(CenterContainer { Error {
+            title: "Failed to load user",
+            error: e
+        }})),
     }
 }
