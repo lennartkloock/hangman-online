@@ -1,3 +1,4 @@
+use hangman_data::UserToken;
 use rand::{Rng, RngCore};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
@@ -5,15 +6,14 @@ use thiserror::Error;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct User {
     nickname: String,
-    token: String,
+    token: UserToken,
 }
 
 impl User {
     pub fn new(nickname: &str) -> Self {
-        let token: u64 = rand::thread_rng().gen();
         Self {
             nickname: nickname.to_string(),
-            token: format!("{token:016x}"),
+            token: UserToken::random(),
         }
     }
 }
