@@ -1,5 +1,5 @@
 [workspace]
-members = ["hangman-server", "hangman-web"]
+members = ["hangman-data", "hangman-server", "hangman-web"]
 
 [profile.release]
 strip = true
