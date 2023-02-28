@@ -1,11 +1,11 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{
     fmt::{Display, Formatter},
     num::ParseIntError,
     str::FromStr,
 };
-use serde_with::{DeserializeFromStr, SerializeDisplay};
 use thiserror::Error;
 
 /// Two bytes that represent a game code

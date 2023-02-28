@@ -1,13 +1,12 @@
-use std::net::SocketAddr;
 use crate::game::{Game, GameManagerState};
 use axum::{
-    extract::{ws::WebSocket, Path, State, WebSocketUpgrade},
+    extract::{ws::WebSocket, ConnectInfo, Path, State, WebSocketUpgrade},
     http::StatusCode,
     Json,
 };
-use axum::extract::ConnectInfo;
-use tracing::info;
 use hangman_data::{GameCode, GameSettings};
+use std::net::SocketAddr;
+use tracing::info;
 
 pub async fn create_game(
     State(game_manager): State<GameManagerState>,

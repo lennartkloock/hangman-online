@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use hangman_data::{GameCode, GameSettings};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::info;
 
