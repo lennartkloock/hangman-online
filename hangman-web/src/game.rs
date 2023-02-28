@@ -7,49 +7,16 @@ use crate::{
 use dioxus::prelude::*;
 use dioxus_router::use_route;
 use fermi::{use_read, Atom};
+use hangman_data::GameCode;
 use std::{
     convert::Infallible,
     fmt::{Display, Formatter},
     num::ParseIntError,
     str::FromStr,
 };
-use thiserror::Error;
 
 mod create_user;
 mod ongoing_game;
-
-/// Two bytes that represent a game code
-///
-/// 4 characters encoded in hex
-#[derive(PartialEq)]
-pub struct GameCode(u16);
-
-#[derive(Debug, Error)]
-pub enum ParseGameCodeError {
-    #[error("game code must be 4 characters long")]
-    TooShort,
-    #[error("invalid game code: {0}")]
-    ParseIntError(#[from] ParseIntError),
-}
-
-impl FromStr for GameCode {
-    type Err = ParseGameCodeError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 4 {
-            return Err(ParseGameCodeError::TooShort);
-        }
-        u16::from_str_radix(s, 16)
-            .map(Self)
-            .map_err(ParseGameCodeError::from)
-    }
-}
-
-impl Display for GameCode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:04X}", self.0)
-    }
-}
 
 static USER: Atom<Result<Option<User>, StorageError>> = |_| storage::load::<User>("hangman_user");
 
