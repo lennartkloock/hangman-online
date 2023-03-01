@@ -34,7 +34,7 @@ impl Display for UserToken {
     }
 }
 
-struct ExtractUserToken(UserToken);
+pub struct ExtractUserToken(UserToken);
 
 #[async_trait]
 impl<S: Send + Sync> FromRequestParts<S> for ExtractUserToken {
