@@ -93,7 +93,7 @@ async fn handle_socket(
     tokio::spawn(async move {
         // Parse and send client messages to game socket
         while let Some(msg) = receiver.next().await {
-            match msg.map(|m| m.to_text().map(|s| serde_json::from_str(s))) {
+            match msg.map(|m| m.to_text().map(serde_json::from_str)) {
                 Ok(Ok(Ok(message))) => {
                     if let Err(e) = game_socket
                         .send(GameMessage::ClientMessage { token, message })

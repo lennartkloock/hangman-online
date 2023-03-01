@@ -2,18 +2,13 @@ use crate::{
     components::Error,
     game::{create_user::CreateUser, ongoing_game::OngoingGame},
     storage,
-    storage::{StorageError, User},
+    storage::StorageError,
 };
 use dioxus::prelude::*;
 use dioxus_router::use_route;
 use fermi::{use_read, Atom};
 use hangman_data::{GameCode, User};
-use std::{
-    convert::Infallible,
-    fmt::{Display, Formatter},
-    num::ParseIntError,
-    str::FromStr,
-};
+use std::convert::Infallible;
 
 mod create_user;
 mod ongoing_game;

@@ -2,11 +2,11 @@ use crate::{
     components::{CenterContainer, Error, Form, FormTopBar, MaterialButton, MaterialLinkButton},
     game::USER,
     storage,
-    storage::User,
 };
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use fermi::use_set;
+use hangman_data::User;
 use log::error;
 
 pub fn CreateUser(cx: Scope) -> Element {

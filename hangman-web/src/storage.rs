@@ -1,6 +1,4 @@
-use hangman_data::UserToken;
-use rand::{Rng, RngCore};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Error)]

@@ -30,7 +30,7 @@ impl GameManager {
     }
 
     pub fn get_game(&self, code: GameCode) -> Option<mpsc::Sender<GameMessage>> {
-        self.games.get(&code).map(|tx| mpsc::Sender::clone(tx))
+        self.games.get(&code).map(mpsc::Sender::clone)
     }
 }
 
