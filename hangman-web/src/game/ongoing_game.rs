@@ -1,7 +1,4 @@
-use crate::{
-    components::MaterialButton,
-    game::GameCode,
-};
+use crate::{components::MaterialButton, game::GameCode};
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
