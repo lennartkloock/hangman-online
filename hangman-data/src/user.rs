@@ -1,7 +1,7 @@
 use axum::{
     async_trait,
     extract::FromRequestParts,
-    http::{header, header::ToStrError, request::Parts, StatusCode},
+    http::{header, request::Parts, StatusCode},
 };
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -34,13 +34,13 @@ impl Display for UserToken {
     }
 }
 
-pub struct ExtractUserToken(UserToken);
+pub struct UserTokenAuthHeader(pub UserToken);
 
 #[async_trait]
-impl<S: Send + Sync> FromRequestParts<S> for ExtractUserToken {
+impl<S: Send + Sync> FromRequestParts<S> for UserTokenAuthHeader {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         match parts
             .headers
             .get(header::AUTHORIZATION)
