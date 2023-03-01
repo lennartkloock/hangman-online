@@ -1,23 +1,36 @@
-use hangman_data::{GameCode, GameSettings, UserToken};
+use hangman_data::{GameCode, GameSettings, ServerMessage, UserToken};
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, Mutex};
 use tracing::info;
+
+mod logic;
+
+pub use logic::GameMessage;
 
 pub type GameManagerState = Arc<Mutex<GameManager>>;
 
 #[derive(Debug, Default)]
 pub struct GameManager {
-    games: HashMap<GameCode, Game>,
+    games: HashMap<GameCode, mpsc::Sender<GameMessage>>,
+    clients: HashMap<UserToken, mpsc::Sender<ServerMessage>>,
 }
 
 impl GameManager {
     pub fn add_game(&mut self, game: Game) {
         info!("new game: {}", game.code);
-        self.games.insert(game.code, game);
+        let code = game.code;
+        let (tx, rx) = mpsc::channel(1);
+        tokio::spawn(async move { logic::game_logic(game, rx).await });
+        self.games.insert(code, tx);
     }
 
-    pub fn get_game(&self, code: GameCode) -> Option<&Game> {
-        self.games.get(&code)
+    pub fn add_client(&mut self, client: UserToken, tx: mpsc::Sender<ServerMessage>) {
+        info!("new client with token: {}", client);
+        self.clients.insert(client, tx);
+    }
+
+    pub fn get_game(&self, code: GameCode) -> Option<mpsc::Sender<GameMessage>> {
+        self.games.get(&code).map(|tx| mpsc::Sender::clone(tx))
     }
 }
 

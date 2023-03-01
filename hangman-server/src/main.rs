@@ -3,7 +3,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use std::{net::SocketAddr, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::{
     services::{ServeDir, ServeFile},
@@ -37,7 +37,7 @@ async fn main() {
         .layer(TraceLayer::new_for_http());
 
     axum::Server::bind(&"0.0.0.0:8000".parse().unwrap())
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+        .serve(app.into_make_service())
         .await
         .expect("failed to open server");
 }

@@ -3,21 +3,6 @@ use rand::{Rng, RngCore};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct User {
-    nickname: String,
-    token: UserToken,
-}
-
-impl User {
-    pub fn new(nickname: &str) -> Self {
-        Self {
-            nickname: nickname.to_string(),
-            token: UserToken::random(),
-        }
-    }
-}
-
 #[derive(Debug, Error)]
 pub enum StorageError {
     #[error("failed to retrieve window object")]

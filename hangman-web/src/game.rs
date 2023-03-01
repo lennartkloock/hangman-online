@@ -7,7 +7,7 @@ use crate::{
 use dioxus::prelude::*;
 use dioxus_router::use_route;
 use fermi::{use_read, Atom};
-use hangman_data::GameCode;
+use hangman_data::{GameCode, User};
 use std::{
     convert::Infallible,
     fmt::{Display, Formatter},

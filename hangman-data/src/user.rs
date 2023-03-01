@@ -1,4 +1,5 @@
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{
     fmt::{Display, Formatter},
@@ -26,5 +27,20 @@ impl FromStr for UserToken {
 impl Display for UserToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:016x}", self.0)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct User {
+    pub nickname: String,
+    pub token: UserToken,
+}
+
+impl User {
+    pub fn new(nickname: &str) -> Self {
+        Self {
+            nickname: nickname.to_string(),
+            token: UserToken::random(),
+        }
     }
 }
