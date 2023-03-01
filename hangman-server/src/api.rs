@@ -11,7 +11,6 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use hangman_data::{GameCode, GameSettings, User, UserToken};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
@@ -43,15 +42,13 @@ pub async fn game_ws(
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
     if let Some(game_socket) = game_manager.lock().await.get_game(code) {
-        let game_manager = Arc::clone(&game_manager);
-        ws.on_upgrade(move |socket| handle_socket(game_manager, socket, user, code, game_socket))
+        ws.on_upgrade(move |socket| handle_socket(socket, user, code, game_socket))
     } else {
         StatusCode::NOT_FOUND.into_response()
     }
 }
 
 async fn handle_socket(
-    game_manager: GameManagerState,
     socket: WebSocket,
     user: User,
     code: GameCode,
@@ -79,14 +76,13 @@ async fn handle_socket(
             }
         }
     });
-    game_manager.lock().await.add_client(user.token, tx);
 
     // Copy user token
     let token = user.token;
 
     // Join lobby
     game_socket
-        .send(GameMessage::JoinLobby(user))
+        .send(GameMessage::Join { user, sender: tx })
         .await
         .unwrap();
 
