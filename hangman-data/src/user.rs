@@ -1,3 +1,8 @@
+use axum::{
+    async_trait,
+    extract::FromRequestParts,
+    http::{header, header::ToStrError, request::Parts, StatusCode},
+};
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{
@@ -26,5 +31,31 @@ impl FromStr for UserToken {
 impl Display for UserToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:016x}", self.0)
+    }
+}
+
+struct ExtractUserToken(UserToken);
+
+#[async_trait]
+impl<S: Send + Sync> FromRequestParts<S> for ExtractUserToken {
+    type Rejection = (StatusCode, &'static str);
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        match parts
+            .headers
+            .get(header::AUTHORIZATION)
+            .map(|auth| auth.to_str().map(|s| UserToken::from_str(s)))
+        {
+            Some(Ok(Ok(token))) => Ok(Self(token)),
+            Some(Err(_)) => Err((
+                StatusCode::BAD_REQUEST,
+                "`Authorization` header contains invalid characters",
+            )),
+            Some(Ok(Err(_))) => Err((
+                StatusCode::BAD_REQUEST,
+                "`Authorization` header must contain a valid user token",
+            )),
+            None => Err((StatusCode::BAD_REQUEST, "`Authorization` header is missing")),
+        }
     }
 }
