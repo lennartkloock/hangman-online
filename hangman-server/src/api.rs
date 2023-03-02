@@ -9,30 +9,18 @@ use axum::{
     Json,
 };
 use futures::{SinkExt, StreamExt};
-use hangman_data::{GameCode, GameSettings, User, UserToken};
-use serde::{Deserialize, Serialize};
+use hangman_data::{CreateGameBody, GameCode, User};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
-
-#[derive(Deserialize)]
-pub struct CreateGameBody {
-    token: UserToken,
-    settings: GameSettings,
-}
-
-#[derive(Serialize)]
-pub struct CreateGameResponse {
-    code: GameCode,
-}
 
 pub async fn create_game(
     State(game_manager): State<GameManagerState>,
     Json(CreateGameBody { token, settings }): Json<CreateGameBody>,
-) -> (StatusCode, Json<CreateGameResponse>) {
+) -> (StatusCode, Json<GameCode>) {
     let game = Game::new(token, settings);
     let code = game.code;
     game_manager.lock().await.add_game(game);
-    (StatusCode::CREATED, Json(CreateGameResponse { code }))
+    (StatusCode::CREATED, Json(code))
 }
 
 pub async fn game_ws(

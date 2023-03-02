@@ -1,6 +1,8 @@
 use crate::components::{CenterContainer, Form, FormTopBar, MaterialButton, MaterialLinkButton};
 use dioxus::prelude::*;
 use dioxus_router::use_router;
+use hangman_data::{CreateGameBody, GameCode, GameLanguage, GameSettings, UserToken};
+use log::info;
 
 pub fn CreateLobby(cx: Scope) -> Element {
     let router = use_router(cx);
@@ -8,8 +10,22 @@ pub fn CreateLobby(cx: Scope) -> Element {
     cx.render(rsx!(
         CenterContainer {
             Form {
-                onsubmit: move |_| {
-                    router.navigate_to("/game");
+                onsubmit: |_| {
+                    let router = router.clone();
+                    cx.spawn(async move {
+                        let client = reqwest::Client::new();
+                        let body = CreateGameBody { token: UserToken::random(), settings: GameSettings { language: GameLanguage::German } };
+                        let code: GameCode = client.post("http://localhost:8000/api/game")
+                            .json(&body)
+                            .send()
+                            .await
+                            .unwrap()
+                            .json()
+                            .await
+                            .unwrap();
+                        info!("Created game {code}");
+                        router.navigate_to(&format!("/game/{code}"));
+                    });
                 },
                 FormTopBar {
                     MaterialLinkButton { name: "arrow_back", to: "/" }
