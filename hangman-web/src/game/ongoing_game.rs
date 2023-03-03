@@ -1,31 +1,86 @@
-use crate::{components::MaterialButton, game::GameCode};
+use crate::{
+    components::{Error, MaterialButton},
+    game::GameCode,
+};
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use fermi::prelude::*;
+use futures::{SinkExt, StreamExt};
+use hangman_data::{ClientMessage, User};
+use log::{debug, info};
+use pharos::{Observable, ObserveConfig};
+use ws_stream_wasm::{WsErr, WsMessage, WsMeta};
 
 static LETTERS: AtomRef<Vec<char>> = |_| vec![];
 
 #[inline_props]
-pub fn OngoingGame(cx: Scope<OngoingGameProps>, code: GameCode) -> Element {
-    cx.render(rsx!(
-        Header { code: code }
-        div {
-            class: "h-full flex items-center",
-            div {
-                class: "grid game-container gap-y-2 w-full",
-                Players {}
-                h1 {
-                    class: "text-xl font-light text-center",
-                    style: "grid-area: title",
-                    "GUESS THE WORD"
+pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element<'a> {
+    let error = use_state(cx, || Option::<WsErr>::None);
+    let players = use_state(cx, || vec!["".to_string()]);
+
+    let _ws = use_coroutine(cx, |_: UnboundedReceiver<()>| {
+        to_owned![code, error]; // Copies code
+        let nickname = user.nickname.clone();
+        let token = user.token; // Copies token
+        async move {
+            let query = form_urlencoded::Serializer::new(String::new())
+                .append_pair("nickname", &nickname)
+                .append_pair("token", &format!("{}", token))
+                .finish();
+            match WsMeta::connect(
+                format!("ws://localhost:8000/api/game/{code}/ws?{query}"),
+                None,
+            )
+                .await
+            {
+                Ok((mut ws, mut stream)) => {
+                    info!("successfully connected to ws server");
+                    stream
+                        .send(WsMessage::Text(
+                            serde_json::to_string(&ClientMessage::Ping).unwrap(),
+                        ))
+                        .await
+                        .unwrap();
+                    while let Some(ev) = ws
+                        .observe(ObserveConfig::default())
+                        .await
+                        .unwrap()
+                        .next()
+                        .await
+                    {
+                        debug!("event: {ev:?}");
+                    }
                 }
-                Word { word: "Hangman" }
-                Chat {}
-                Hangman {}
+                Err(e) => error.set(Some(e)),
             }
         }
-    ))
+    });
+
+    match error.get() {
+        None => cx.render(rsx!(
+            Header { code: code }
+            div {
+                class: "h-full flex items-center",
+                div {
+                    class: "grid game-container gap-y-2 w-full",
+                    Players { players: players.get() }
+                    h1 {
+                        class: "text-xl font-light text-center",
+                        style: "grid-area: title",
+                        "GUESS THE WORD"
+                    }
+                    Word { word: "Hangman" }
+                    Chat {}
+                    Hangman {}
+                }
+            }
+        )),
+        Some(e) => cx.render(rsx!(Error {
+            title: "Connection error",
+            error: e,
+        })),
+    }
 }
 
 #[inline_props]
@@ -69,12 +124,15 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode) -> Element<'a> {
     ))
 }
 
-fn Players(cx: Scope) -> Element {
+#[inline_props]
+fn Players<'a>(cx: Scope<'a>, players: &'a Vec<String>) -> Element<'a> {
+    let p = &players[0];
+
     cx.render(rsx!(
         div {
             style: "grid-area: players",
             class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg",
-            "Players"
+            "{p}"
         }
     ))
 }

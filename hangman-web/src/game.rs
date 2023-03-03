@@ -18,7 +18,7 @@ pub fn Game(cx: Scope) -> Element {
 
     match (code, user) {
         // Render game
-        (Some(Ok(code)), Ok(Some(_user))) => cx.render(rsx!(OngoingGame { code: code })),
+        (Some(Ok(code)), Ok(Some(user))) => cx.render(rsx!(OngoingGame { code: code, user: user })),
 
         // Invalid game code
         (Some(Err(e)), _) => cx.render(rsx!(Error {
