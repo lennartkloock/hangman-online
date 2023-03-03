@@ -8,7 +8,7 @@ use fermi::use_init_atom_root;
 use std::convert::Infallible;
 
 mod components;
-mod create_lobby;
+mod create_game;
 mod game;
 mod home;
 mod storage;
@@ -31,7 +31,7 @@ fn App(cx: Scope) -> Element {
         Router {
             MaterialIconStylesheet {}
             Route { to: "/", home::Home {} }
-            Route { to: "/create", create_lobby::CreateLobby {} }
+            Route { to: "/create", create_game::CreateGame {} }
             Route { to: "/game/:code", game::Game {} }
             Route { to: "", NotFound {} }
         }

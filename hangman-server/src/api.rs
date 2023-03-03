@@ -68,7 +68,7 @@ async fn handle_socket(
     // Copy user token
     let token = user.token;
 
-    // Join lobby
+    // Join Game
     game_socket
         .send(GameMessage::Join { user, sender: tx })
         .await

@@ -4,7 +4,7 @@ use dioxus_router::use_router;
 use hangman_data::{CreateGameBody, GameCode, GameLanguage, GameSettings, UserToken};
 use log::info;
 
-pub fn CreateLobby(cx: Scope) -> Element {
+pub fn CreateGame(cx: Scope) -> Element {
     let router = use_router(cx);
 
     cx.render(rsx!(
@@ -31,7 +31,7 @@ pub fn CreateLobby(cx: Scope) -> Element {
                     MaterialLinkButton { name: "arrow_back", to: "/" }
                     span {
                         class: "font-light",
-                        "Create Lobby"
+                        "Create Game"
                     }
                     MaterialButton { name: "done" }
                 }

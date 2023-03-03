@@ -29,7 +29,7 @@ pub fn Home(cx: Scope) -> Element {
                 }
                 div {
                     class: "flex flex-col gap-4",
-                    LinkButton { to: "/create", "Create Lobby" }
+                    LinkButton { to: "/create", "Create Game" }
                     JoinButton {}
                 }
             }
@@ -86,7 +86,7 @@ fn JoinButton(cx: Scope) -> Element {
                 class: "{classes}",
                 r#type: "text",
                 name: "code",
-                placeholder: if active { "Code" } else { "Join Lobby" },
+                placeholder: if active { "Code" } else { "Join Game" },
                 value: "",
                 minlength: 4,
                 maxlength: 4,
