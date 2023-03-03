@@ -1,6 +1,6 @@
 use crate::{
     components::{CenterContainer, Error, Form, FormTopBar, MaterialButton, MaterialLinkButton},
-    game::USER,
+    global_state::USER,
     storage,
 };
 use dioxus::prelude::*;

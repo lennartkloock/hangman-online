@@ -9,7 +9,9 @@ use std::convert::Infallible;
 
 mod components;
 mod create_game;
+mod create_user;
 mod game;
+mod global_state;
 mod home;
 mod storage;
 

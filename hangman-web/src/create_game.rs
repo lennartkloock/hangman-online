@@ -1,27 +1,33 @@
-use crate::components::{
-    CenterContainer, Error, Form, FormTopBar, MaterialButton, MaterialLinkButton,
+use crate::{
+    components::{CenterContainer, Error, Form, FormTopBar, MaterialButton, MaterialLinkButton},
+    create_user::CreateUser,
+    global_state::USER,
+    storage,
+    storage::StorageError,
 };
 use dioxus::prelude::*;
 use dioxus_router::use_router;
-use hangman_data::{CreateGameBody, GameCode, GameLanguage, GameSettings, UserToken};
+use fermi::{use_read, Atom};
+use hangman_data::{CreateGameBody, GameCode, GameLanguage, GameSettings, User, UserToken};
 use log::info;
 use reqwest::Error;
-use std::convert::Infallible;
 
 pub fn CreateGame(cx: Scope) -> Element {
     let router = use_router(cx);
     let client = cx.use_hook(|| reqwest::Client::new());
     let error = use_state(cx, || Option::<reqwest::Error>::None);
+    let user = use_read(cx, USER);
 
-    match error.get() {
-        None => {
+    match (user, error.get()) {
+        (Ok(Some(user)), None) => {
             cx.render(rsx!(
                 CenterContainer {
                     Form {
                         onsubmit: |_| {
-                            to_owned![router, client, error];
+                            let token = user.token; // Copies token
+                            to_owned![router, client, error]; // Clones states
                             cx.spawn(async move {
-                                let body = CreateGameBody { token: UserToken::random(), settings: GameSettings { language: GameLanguage::German } };
+                                let body = CreateGameBody { token, settings: GameSettings { language: GameLanguage::German } };
                                 match client.post("http://localhost:8000/api/game")
                                     .json(&body)
                                     .send()
@@ -55,11 +61,14 @@ pub fn CreateGame(cx: Scope) -> Element {
                 }
             ))
         }
-        Some(e) => {
-            cx.render(rsx!(Error {
-                title: "Failed to create game",
-                error: e,
-            }))
-        }
+        (Ok(None), _) => cx.render(rsx!(CreateUser {})),
+        (Err(e), _) => cx.render(rsx!(Error {
+            title: "Failed to load user",
+            error: e,
+        })),
+        (_, Some(e)) => cx.render(rsx!(Error {
+            title: "Failed to create game",
+            error: e,
+        })),
     }
 }
