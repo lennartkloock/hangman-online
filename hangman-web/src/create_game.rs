@@ -11,7 +11,7 @@ pub fn CreateGame(cx: Scope) -> Element {
         CenterContainer {
             Form {
                 onsubmit: |_| {
-                    let router = router.clone();
+                    to_owned![router];
                     cx.spawn(async move {
                         let client = reqwest::Client::new();
                         let body = CreateGameBody { token: UserToken::random(), settings: GameSettings { language: GameLanguage::German } };

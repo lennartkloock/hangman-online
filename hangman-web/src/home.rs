@@ -8,7 +8,7 @@ pub fn Home(cx: Scope) -> Element {
     let title = use_state(cx, || animate_title(0).unwrap());
 
     use_future(cx, (), |_| {
-        let title = title.clone();
+        to_owned![title];
         async move {
             let mut i = 0;
             while let Some(new_title) = animate_title(i) {
