@@ -2,19 +2,16 @@ use crate::{
     components::{CenterContainer, Error, Form, FormTopBar, MaterialButton, MaterialLinkButton},
     create_user::CreateUser,
     global_state::USER,
-    storage,
-    storage::StorageError,
 };
 use dioxus::prelude::*;
 use dioxus_router::use_router;
-use fermi::{use_read, Atom};
-use hangman_data::{CreateGameBody, GameCode, GameLanguage, GameSettings, User, UserToken};
+use fermi::use_read;
+use hangman_data::{CreateGameBody, GameCode, GameLanguage, GameSettings};
 use log::info;
-use reqwest::Error;
 
 pub fn CreateGame(cx: Scope) -> Element {
     let router = use_router(cx);
-    let client = cx.use_hook(|| reqwest::Client::new());
+    let client = cx.use_hook(reqwest::Client::new);
     let error = use_state(cx, || Option::<reqwest::Error>::None);
     let user = use_read(cx, USER);
 

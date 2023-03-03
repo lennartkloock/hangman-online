@@ -1,11 +1,11 @@
 use crate::{
     components::Error, create_user::CreateUser, game::ongoing_game::OngoingGame,
-    global_state::USER, storage, storage::StorageError,
+    global_state::USER,
 };
 use dioxus::prelude::*;
 use dioxus_router::use_route;
-use fermi::{use_read, Atom};
-use hangman_data::{GameCode, User};
+use fermi::use_read;
+use hangman_data::GameCode;
 use std::convert::Infallible;
 
 mod ongoing_game;
