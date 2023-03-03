@@ -38,3 +38,19 @@ pub fn Error<'a, E: Error>(cx: Scope<'a, ErrorProps<'a, E>>) -> Element<'a> {
         }
     ))
 }
+
+#[derive(Props)]
+pub struct ErrorDialogProps<'a> {
+    open: bool,
+    children: Element<'a>,
+}
+
+pub fn ErrorDialog<'a>(cx: Scope<'a, ErrorDialogProps<'a>>) -> Element<'a> {
+    cx.render(rsx!(
+        dialog {
+            class: "text-white bg-zinc-800 rounded border-2 border-zinc-600",
+            open: cx.props.open,
+            &cx.props.children
+        }
+    ))
+}
