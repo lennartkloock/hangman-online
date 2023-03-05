@@ -1,5 +1,5 @@
 use crate::{
-    components::{Error, MaterialButton},
+    components::{CenterContainer, Error, MaterialButton},
     game::{ongoing_game::ws_logic::connect, GameCode},
 };
 use dioxus::prelude::*;
@@ -70,7 +70,16 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
 
     match state.get() {
         GameState::Loading => cx.render(rsx!(
-            p { "Loading..." }
+            CenterContainer {
+                div {
+                    class: "flex flex-col gap-2",
+                    div { class: "race-by" }
+                    p {
+                        class: "text-2xl",
+                        "Joining..."
+                    }
+                }
+            }
         )),
         GameState::Error(e) => {
             let title = match e {
