@@ -1,6 +1,5 @@
 use crate::{
-    components::Error, create_user::CreateUser, game::ongoing_game::OngoingGame,
-    global_state::USER,
+    components::Error, create_user::CreateUser, game::ongoing_game::OngoingGame, global_state::USER,
 };
 use dioxus::prelude::*;
 use dioxus_router::use_route;
@@ -18,7 +17,10 @@ pub fn Game(cx: Scope) -> Element {
 
     match (code, user) {
         // Render game
-        (Some(Ok(code)), Ok(Some(user))) => cx.render(rsx!(OngoingGame { code: code, user: user })),
+        (Some(Ok(code)), Ok(Some(user))) => cx.render(rsx!(OngoingGame {
+            code: code,
+            user: user
+        })),
 
         // Invalid game code
         (Some(Err(e)), _) => cx.render(rsx!(Error {

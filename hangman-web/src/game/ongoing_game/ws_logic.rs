@@ -61,7 +61,11 @@ pub async fn ws_read(ws_rx: Option<SplitStream<WebSocket>>, state: UseState<Game
     }
 }
 
-pub async fn ws_write(mut rx: UnboundedReceiver<ClientMessage>, ws_tx: Option<SplitSink<WebSocket, Message>>, state: UseState<GameState>) {
+pub async fn ws_write(
+    mut rx: UnboundedReceiver<ClientMessage>,
+    ws_tx: Option<SplitSink<WebSocket, Message>>,
+    state: UseState<GameState>,
+) {
     if let Some(mut ws_write) = ws_tx {
         while let Some(msg) = rx.next().await {
             match serde_json::to_string(&msg) {

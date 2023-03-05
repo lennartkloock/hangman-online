@@ -57,7 +57,10 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             .append_pair("nickname", &user.nickname)
             .append_pair("token", &format!("{}", user.token))
             .finish();
-        connect(state, format!("ws://localhost:8000/api/game/{code}/ws?{query}"))
+        connect(
+            state,
+            format!("ws://localhost:8000/api/game/{code}/ws?{query}"),
+        )
     });
     let _ws_read: &Coroutine<()> = use_coroutine(cx, |_| {
         to_owned![state];
