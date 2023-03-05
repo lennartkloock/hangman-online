@@ -3,3 +3,5 @@ members = ["hangman-data", "hangman-server", "hangman-web"]
 
 [profile.release]
 strip = true
+lto = true
+codegen-units = 1
