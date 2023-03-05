@@ -1,70 +1,95 @@
 use crate::{
     components::{Error, MaterialButton},
-    game::GameCode,
+    game::{ongoing_game::ws_logic::connect, GameCode},
 };
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use fermi::prelude::*;
-use futures::{SinkExt, StreamExt};
+use gloo_net::websocket::WebSocketError;
+use gloo_utils::errors::JsError;
 use hangman_data::{ClientMessage, User};
-use log::{debug, info};
-use pharos::{Observable, ObserveConfig};
-use ws_stream_wasm::{WsErr, WsMessage, WsMeta};
+use thiserror::Error;
+
+mod game_logic;
+mod ws_logic;
 
 static LETTERS: AtomRef<Vec<char>> = |_| vec![];
 
+#[derive(Debug, Error)]
+pub enum ConnectionError {
+    #[error("failed to establish a connection due to syntax error: {0}")]
+    SyntaxError(JsError),
+    #[error("failed to serialize message: {0}")]
+    SerializeError(serde_json::Error),
+    #[error("failed to send message: {0}")]
+    SendError(JsError),
+
+    #[error("failed to deserialize message: {0}")]
+    DeserializeError(serde_json::Error),
+    #[error("failed to deserialize message due to wrong data type")]
+    DeserializeWrongDataTypeError,
+
+    #[error("websocket error: {0}")]
+    WsError(#[from] WebSocketError),
+
+    #[error("this game doesn't exist")]
+    GameNotFound,
+    #[error("this game closed")]
+    GameClosed,
+}
+
+pub enum GameState {
+    /// waiting for connection and first message
+    Loading,
+    Joined {
+        players: Vec<String>,
+    },
+    Error(ConnectionError),
+}
+
 #[inline_props]
 pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element<'a> {
-    let error = use_state(cx, || Option::<WsErr>::None);
-    let players = use_state(cx, || vec!["".to_string()]);
+    let state = use_state(cx, || GameState::Loading);
 
-    let _ws = use_coroutine(cx, |_: UnboundedReceiver<()>| {
-        to_owned![code, error]; // Copies code
-        let nickname = user.nickname.clone();
-        let token = user.token; // Copies token
-        async move {
-            let query = form_urlencoded::Serializer::new(String::new())
-                .append_pair("nickname", &nickname)
-                .append_pair("token", &format!("{}", token))
-                .finish();
-            match WsMeta::connect(
-                format!("ws://localhost:8000/api/game/{code}/ws?{query}"),
-                None,
-            )
-                .await
-            {
-                Ok((mut ws, mut stream)) => {
-                    info!("successfully connected to ws server");
-                    stream
-                        .send(WsMessage::Text(
-                            serde_json::to_string(&ClientMessage::Ping).unwrap(),
-                        ))
-                        .await
-                        .unwrap();
-                    while let Some(ev) = ws
-                        .observe(ObserveConfig::default())
-                        .await
-                        .unwrap()
-                        .next()
-                        .await
-                    {
-                        debug!("event: {ev:?}");
-                    }
-                }
-                Err(e) => error.set(Some(e)),
-            }
-        }
+    let (ws_tx, ws_rx) = cx.use_hook(|| {
+        let query = form_urlencoded::Serializer::new(String::new())
+            .append_pair("nickname", &user.nickname)
+            .append_pair("token", &format!("{}", user.token))
+            .finish();
+        connect(state, format!("ws://localhost:8000/api/game/{code}/ws?{query}"))
+    });
+    let _ws_read: &Coroutine<()> = use_coroutine(cx, |_| {
+        to_owned![state];
+        ws_logic::ws_read(ws_rx.take(), state)
+    });
+    let _ws_write: &Coroutine<ClientMessage> = use_coroutine(cx, |rx| {
+        to_owned![state];
+        ws_logic::ws_write(rx, ws_tx.take(), state)
     });
 
-    match error.get() {
-        None => cx.render(rsx!(
+    match state.get() {
+        GameState::Loading => cx.render(rsx!(
+            p { "Loading..." }
+        )),
+        GameState::Error(e) => {
+            let title = match e {
+                ConnectionError::GameNotFound => "Game not found",
+                ConnectionError::GameClosed => "The game was closed",
+                _ => "Connection error",
+            };
+            cx.render(rsx!(Error {
+                title: title,
+                error: e,
+            }))
+        }
+        GameState::Joined { players } => cx.render(rsx!(
             Header { code: code }
             div {
                 class: "h-full flex items-center",
                 div {
                     class: "grid game-container gap-y-2 w-full",
-                    Players { players: players.get() }
+                    Players { players: players }
                     h1 {
                         class: "text-xl font-light text-center",
                         style: "grid-area: title",
@@ -76,10 +101,6 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 }
             }
         )),
-        Some(e) => cx.render(rsx!(Error {
-            title: "Connection error",
-            error: e,
-        })),
     }
 }
 

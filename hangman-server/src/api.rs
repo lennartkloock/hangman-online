@@ -1,7 +1,7 @@
 use crate::game::{Game, GameManagerState, GameMessage};
 use axum::{
     extract::{
-        ws::{Message, WebSocket},
+        ws::{CloseFrame, Message, WebSocket},
         Path, Query, State, WebSocketUpgrade,
     },
     http::StatusCode,
@@ -10,6 +10,7 @@ use axum::{
 };
 use futures::{SinkExt, StreamExt};
 use hangman_data::{CreateGameBody, GameCode, User};
+use std::borrow::Cow;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
@@ -32,7 +33,17 @@ pub async fn game_ws(
     if let Some(game_socket) = game_manager.lock().await.get_game(code) {
         ws.on_upgrade(move |socket| handle_socket(socket, user, code, game_socket))
     } else {
-        StatusCode::NOT_FOUND.into_response()
+        ws.on_upgrade(move |mut socket| async move {
+            if let Err(e) = socket
+                .send(Message::Close(Some(CloseFrame {
+                    code: 4000,
+                    reason: Cow::from("game not found"),
+                })))
+                .await
+            {
+                warn!("game not found but failed to send close frame to player socket: {e}");
+            }
+        })
     }
 }
 
@@ -62,6 +73,15 @@ async fn handle_socket(
                     break;
                 }
             }
+        }
+        if let Err(e) = sender
+            .send(Message::Close(Some(CloseFrame {
+                code: 4001,
+                reason: Cow::from("the game ended"),
+            })))
+            .await
+        {
+            warn!("game ended but failed to send close frame to player socket: {e}");
         }
     });
 
