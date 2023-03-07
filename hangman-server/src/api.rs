@@ -85,7 +85,8 @@ async fn handle_socket(
             })))
             .await
         {
-            warn!("game ended but failed to send close frame to player socket: {e}");
+            // Client most probably already closed the connection
+            debug!("game ended but failed to send close frame to player socket: {e}");
         }
     });
 
