@@ -8,7 +8,7 @@ use dioxus_router::use_router;
 use fermi::prelude::*;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
-use hangman_data::{ClientMessage, User};
+use hangman_data::{ClientMessage, GameSettings, User};
 use thiserror::Error;
 
 mod game_logic;
@@ -40,10 +40,13 @@ pub enum ConnectionError {
 }
 
 pub enum GameState {
-    /// waiting for connection and first message
+    /// waiting for connection and init message
     Loading,
     Joined {
+        settings: GameSettings,
         players: Vec<String>,
+        chat: Vec<(String, String)>,
+        tries_used: u32,
     },
     Error(ConnectionError),
 }
@@ -95,8 +98,8 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: e,
             }))
         }
-        GameState::Joined { players } => cx.render(rsx!(
-            Header { code: code }
+        GameState::Joined { settings, players, chat, tries_used } => cx.render(rsx!(
+            Header { code: code, settings: settings }
             div {
                 class: "h-full flex items-center",
                 div {
@@ -108,8 +111,8 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                         "GUESS THE WORD"
                     }
                     Word { word: "Hangman" }
-                    Chat {}
-                    Hangman {}
+                    Chat { chat: chat }
+                    Hangman { tries_used: *tries_used }
                 }
             }
         )),
@@ -117,7 +120,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
 }
 
 #[inline_props]
-fn Header<'a>(cx: Scope<'a>, code: &'a GameCode) -> Element<'a> {
+fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: &'a GameSettings) -> Element<'a> {
     let router = use_router(cx);
 
     let on_copy = move |_| {
@@ -139,6 +142,8 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode) -> Element<'a> {
         }
     };
 
+    let lang = &settings.language;
+
     cx.render(rsx!(
         div {
             class: "absolute top-2 left-2 flex items-center gap-1 p-1",
@@ -150,7 +155,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode) -> Element<'a> {
             button {
                 class: "material-button gap-1 bg-zinc-700",
                 MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
-                span { "German" }
+                span { "{lang}" }
             }
             MaterialButton { name: "settings" }
         }
@@ -168,14 +173,9 @@ fn Players<'a>(cx: Scope<'a>, players: &'a Vec<String>) -> Element<'a> {
     ))
 }
 
-fn Chat(cx: Scope) -> Element {
+#[inline_props]
+fn Chat<'a>(cx: Scope, chat: &'a Vec<(String, String)>) -> Element {
     let letters = use_atom_ref(cx, LETTERS);
-    let read = letters.read();
-    let chat_messages = read.iter().rev().map(|l| {
-        cx.render(rsx!(
-            p { "{l}" }
-        ))
-    });
 
     let value = use_state(cx, || "");
     let on_letter_submit = move |evt: FormEvent| {
@@ -189,9 +189,9 @@ fn Chat(cx: Scope) -> Element {
         div {
             class: "flex flex-col gap-0",
             style: "grid-area: chat",
-            div {
+            ul {
                 class: "bg-zinc-800 rounded-t-lg overflow-y-auto px-2 py-1 font-light flex flex-col-reverse h-64",
-                chat_messages
+                chat.iter().rev().map(|m| rsx!(li { "{m.0}: {m.1}" }))
             }
             form {
                 class: "w-full",
@@ -231,12 +231,13 @@ fn Word<'a>(cx: Scope<'a>, word: &'a str) -> Element<'a> {
     }))
 }
 
-fn Hangman(cx: Scope) -> Element {
+#[inline_props]
+fn Hangman(cx: Scope, tries_used: u32) -> Element {
     cx.render(rsx!(
         div {
             style: "grid-area: hangman",
             class: "flex justify-center items-center",
-            "0/10"
+            "{tries_used}/10"
         }
     ))
 }
