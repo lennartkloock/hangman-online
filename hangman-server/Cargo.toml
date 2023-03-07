@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-trait = "0.1.65"
+
 hangman-data = { path = "../hangman-data" }
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.93"
@@ -15,6 +17,7 @@ futures = "0.3.26"
 
 axum = { version = "0.6.9", features = ["ws"] }
 tower-http = { version = "0.4.0", features = ["fs", "trace"] }
+tungstenite = "0.18.0" # To use error type
 
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }

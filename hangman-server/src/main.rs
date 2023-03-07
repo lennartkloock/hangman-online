@@ -14,6 +14,7 @@ use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
 mod api;
 mod game;
+mod sender_utils;
 
 #[tokio::main]
 async fn main() {

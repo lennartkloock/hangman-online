@@ -1,4 +1,7 @@
-use crate::game::{Game, GameManagerState, GameMessage};
+use crate::{
+    game::{Game, GameManagerState, GameMessage},
+    sender_utils::LogSend,
+};
 use axum::{
     extract::{
         ws::{CloseFrame, Message, WebSocket},
@@ -12,7 +15,8 @@ use futures::{SinkExt, StreamExt};
 use hangman_data::{CreateGameBody, GameCode, User};
 use std::borrow::Cow;
 use tokio::sync::mpsc;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
+use tungstenite::Error;
 
 pub async fn create_game(
     State(game_manager): State<GameManagerState>,
@@ -90,26 +94,47 @@ async fn handle_socket(
 
     // Join Game
     game_socket
-        .send(GameMessage::Join { user, sender: tx })
-        .await
-        .unwrap();
+        .log_send(GameMessage::Join { user, sender: tx })
+        .await;
 
+    // Task that parses and sends client messages to the game socket
     tokio::spawn(async move {
-        // Parse and send client messages to game socket
         while let Some(msg) = receiver.next().await {
-            match msg.map(|m| m.to_text().map(serde_json::from_str)) {
-                Ok(Ok(Ok(message))) => {
-                    if let Err(e) = game_socket
-                        .send(GameMessage::ClientMessage { token, message })
-                        .await
+            match msg {
+                Ok(Message::Close(_)) => {
+                    debug!("client sent closing frame");
+                    game_socket.log_send(GameMessage::Leave(token)).await;
+                    break;
+                }
+                Ok(msg) => match msg.to_text().map(serde_json::from_str) {
+                    Ok(Ok(message)) => {
+                        if game_socket
+                            .log_send(GameMessage::ClientMessage { token, message })
+                            .await
+                            .is_some()
+                        {
+                            break;
+                        }
+                    }
+                    Ok(Err(e)) => warn!("failed to parse ws message: {e}"),
+                    Err(e) => warn!("failed to parse ws message as text: {e}"),
+                },
+                Err(e) => {
+                    let b = e
+                        .into_inner()
+                        .downcast::<Error>()
+                        .expect("failed to downcast axum error to tungstenite error");
+                    if let Error::Protocol(
+                        tungstenite::error::ProtocolError::ResetWithoutClosingHandshake,
+                    ) = *b
                     {
-                        error!("failed to send message to game socket: {e}");
+                        debug!("client closed connection without closing frame");
+                        game_socket.log_send(GameMessage::Leave(token)).await;
                         break;
+                    } else {
+                        warn!("failed to receive ws message: {}", *b);
                     }
                 }
-                Ok(Ok(Err(e))) => warn!("failed to parse ws message: {e}"),
-                Ok(Err(e)) => warn!("failed to parse ws message as text: {e}"),
-                Err(e) => warn!("failed to receive ws message: {e}"),
             }
         }
     });
