@@ -95,11 +95,11 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             }))
         }
         GameState::Joined(Game {
-                              settings,
-                              players,
-                              chat,
-                              tries_used,
-                          }) => cx.render(rsx!(
+            settings,
+            players,
+            chat,
+            tries_used,
+        }) => cx.render(rsx!(
             Header { code: code, settings: settings }
             div {
                 class: "h-full flex items-center",

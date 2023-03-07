@@ -42,15 +42,15 @@ pub async fn ws_read(ws_rx: Option<SplitStream<WebSocket>>, state: UseRef<GameSt
                     ));
                 }
                 Err(WebSocketError::ConnectionClose(gloo_net::websocket::events::CloseEvent {
-                                                        code: 4000,
-                                                        ..
-                                                    })) => {
+                    code: 4000,
+                    ..
+                })) => {
                     state.set(GameState::Error(ConnectionError::GameNotFound));
                 }
                 Err(WebSocketError::ConnectionClose(gloo_net::websocket::events::CloseEvent {
-                                                        code: 4001,
-                                                        ..
-                                                    })) => {
+                    code: 4001,
+                    ..
+                })) => {
                     state.set(GameState::Error(ConnectionError::GameClosed));
                 }
                 Err(e) => {
