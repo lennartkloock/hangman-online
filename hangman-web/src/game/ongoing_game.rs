@@ -159,13 +159,11 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode) -> Element<'a> {
 
 #[inline_props]
 fn Players<'a>(cx: Scope<'a>, players: &'a Vec<String>) -> Element<'a> {
-    let p = &players[0];
-
     cx.render(rsx!(
-        div {
+        ul {
             style: "grid-area: players",
             class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg",
-            "{p}"
+            players.iter().map(|p| rsx!( li { "{p}" } ))
         }
     ))
 }
