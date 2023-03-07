@@ -47,7 +47,7 @@ impl Display for GameCode {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GameLanguage {
     English,
@@ -64,9 +64,17 @@ impl Display for GameLanguage {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GameSettings {
     pub language: GameLanguage,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Game {
+    pub settings: GameSettings,
+    pub players: Vec<String>,
+    pub chat: Vec<(String, String)>,
+    pub tries_used: u32,
 }
 
 #[cfg(test)]

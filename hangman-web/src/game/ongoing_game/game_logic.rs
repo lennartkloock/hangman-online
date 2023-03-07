@@ -1,20 +1,34 @@
 use crate::game::ongoing_game::GameState;
 use dioxus::prelude::*;
-use hangman_data::{GameLanguage, GameSettings, ServerMessage};
+use hangman_data::{Game, ServerMessage};
+use log::{info, warn};
 
-pub fn handle_message(msg: ServerMessage, state: &UseState<GameState>) {
+pub fn handle_message(msg: ServerMessage, state: &UseRef<GameState>) {
     match msg {
-        ServerMessage::Init { players } => state.set(GameState::Joined {
-            settings: GameSettings {
-                language: GameLanguage::English,
-            },
-            players,
-            chat: vec![
-                ("PockelHockel".to_string(), "Hello".to_string()),
-                ("Testuser".to_string(), "Hello!".to_string()),
-                ("Testuserwad".to_string(), "Hello World!".to_string()),
-            ],
-            tries_used: 3,
+        ServerMessage::Init(data) => state.set(GameState::Joined(data)),
+        ServerMessage::UpdatePlayers(players) => state.with_mut(|mut s| {
+            if let GameState::Joined(mut game) = s {
+                info!("updating player list: {players}");
+                game.players = players;
+            } else {
+                warn!("received update message before init");
+            }
+        }),
+        ServerMessage::NewMessage(msg) => state.with_mut(|s| {
+            if let GameState::Joined(mut game) = s {
+                info!("new chat message: {players}");
+                game.chat.push(msg);
+            } else {
+                warn!("received update message before init");
+            }
+        }),
+        ServerMessage::UpdateTriesUsed(tries_used) => state.with_mut(|s| {
+            if let GameState::Joined(mut game) = s {
+                info!("updating tries used: {tries_used}");
+                game.tries_used = tries_used;
+            } else {
+                warn!("received update message before init");
+            }
         }),
     }
 }

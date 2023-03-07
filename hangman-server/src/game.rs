@@ -15,7 +15,7 @@ pub struct GameManager {
 }
 
 impl GameManager {
-    pub fn add_game(&mut self, game: Game) {
+    pub fn add_game(&mut self, game: ServerGame) {
         info!("new game: {}", game.code);
         let code = game.code;
         let (tx, rx) = mpsc::channel(1);
@@ -28,14 +28,14 @@ impl GameManager {
     }
 }
 
-#[derive(Debug)]
-pub struct Game {
+#[derive(Debug, Clone)]
+pub struct ServerGame {
     pub code: GameCode,
     pub settings: GameSettings,
     pub owner: UserToken,
 }
 
-impl Game {
+impl ServerGame {
     pub fn new(owner: UserToken, settings: GameSettings) -> Self {
         Self {
             code: GameCode::random(),

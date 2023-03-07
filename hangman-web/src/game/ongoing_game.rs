@@ -8,7 +8,7 @@ use dioxus_router::use_router;
 use fermi::prelude::*;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
-use hangman_data::{ClientMessage, GameSettings, User};
+use hangman_data::{ClientMessage, Game, GameSettings, User};
 use thiserror::Error;
 
 mod game_logic;
@@ -42,18 +42,14 @@ pub enum ConnectionError {
 pub enum GameState {
     /// waiting for connection and init message
     Loading,
-    Joined {
-        settings: GameSettings,
-        players: Vec<String>,
-        chat: Vec<(String, String)>,
-        tries_used: u32,
-    },
+    Joined(Game),
     Error(ConnectionError),
 }
 
 #[inline_props]
 pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element<'a> {
-    let state = use_state(cx, || GameState::Loading);
+    // let state = use_state(cx, || GameState::Loading);
+    let state = use_ref(cx, || GameState::Loading);
 
     let (ws_tx, ws_rx) = cx.use_hook(|| {
         let query = form_urlencoded::Serializer::new(String::new())
@@ -98,7 +94,12 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: e,
             }))
         }
-        GameState::Joined { settings, players, chat, tries_used } => cx.render(rsx!(
+        GameState::Joined(Game {
+                              settings,
+                              players,
+                              chat,
+                              tries_used,
+                          }) => cx.render(rsx!(
             Header { code: code, settings: settings }
             div {
                 class: "h-full flex items-center",

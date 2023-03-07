@@ -1,5 +1,5 @@
 use crate::{
-    game::{Game, GameManagerState, GameMessage},
+    game::{ServerGame, GameManagerState, GameMessage},
     sender_utils::LogSend,
 };
 use axum::{
@@ -22,7 +22,7 @@ pub async fn create_game(
     State(game_manager): State<GameManagerState>,
     Json(CreateGameBody { token, settings }): Json<CreateGameBody>,
 ) -> (StatusCode, Json<GameCode>) {
-    let game = Game::new(token, settings);
+    let game = ServerGame::new(token, settings);
     let code = game.code;
     game_manager.lock().await.add_game(game);
     (StatusCode::CREATED, Json(code))

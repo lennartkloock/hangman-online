@@ -1,7 +1,7 @@
 //! Game logic
 
-use crate::{game::Game, sender_utils::LogSend};
-use hangman_data::{ClientMessage, ServerMessage, User, UserToken};
+use crate::{game::ServerGame, sender_utils::LogSend};
+use hangman_data::{ClientMessage, Game, ServerMessage, User, UserToken};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
@@ -19,10 +19,12 @@ pub enum GameMessage {
     },
 }
 
-pub async fn game_logic(game: Game, mut rx: mpsc::Receiver<GameMessage>) {
+pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     // Game logic
     let code = game.code;
     let mut players = HashMap::<UserToken, (User, mpsc::Sender<ServerMessage>)>::new();
+    let mut chat: Vec<(String, String)> = vec![];
+    let mut tries_used = 0;
 
     while let Some(msg) = rx.recv().await {
         info!("[{code}] received {msg:?}");
@@ -31,10 +33,14 @@ pub async fn game_logic(game: Game, mut rx: mpsc::Receiver<GameMessage>) {
                 info!("[{code}] {:?} joins the game", user);
                 let sender_c = sender.clone();
                 players.insert(user.token, (user, sender));
+                let settings = game.settings.clone();
                 sender_c
-                    .log_send(ServerMessage::Init {
+                    .log_send(ServerMessage::Init(Game {
+                        settings,
                         players: players.values().map(|(u, _)| u.nickname.clone()).collect(),
-                    })
+                        chat: chat.clone(),
+                        tries_used,
+                    }))
                     .await;
             }
             GameMessage::Leave(token) => {
