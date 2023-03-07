@@ -54,6 +54,16 @@ pub enum GameLanguage {
     German,
 }
 
+impl Display for GameLanguage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let lang = match self {
+            GameLanguage::English => "English",
+            GameLanguage::German => "Deutsch",
+        };
+        write!(f, "{}", lang)
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GameSettings {
     pub language: GameLanguage,
