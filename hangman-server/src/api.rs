@@ -15,7 +15,7 @@ use futures::{SinkExt, StreamExt};
 use hangman_data::{CreateGameBody, GameCode, User};
 use std::borrow::Cow;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 use tungstenite::Error;
 
 pub async fn create_game(
@@ -57,14 +57,14 @@ async fn handle_socket(
     code: GameCode,
     game_socket: mpsc::Sender<GameMessage>,
 ) {
-    info!("new ws connection by {} for game {code}", user.nickname);
+    debug!("new ws connection by {} for game {code}", user.nickname);
     let (mut sender, mut receiver) = socket.split();
 
     // Send out messages sent to the internal client socket
     let (tx, mut rx) = mpsc::channel(1);
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            info!("sending {msg:?} to client {}", user.token);
+            debug!("sending {msg:?} to client {}", user.token);
             match serde_json::to_string(&msg) {
                 Ok(t) => {
                     if let Err(e) = sender.send(Message::Text(t)).await {
