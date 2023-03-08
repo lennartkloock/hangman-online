@@ -2,7 +2,7 @@ use crate::components::CenterContainer;
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use log::error;
-use std::{convert::Infallible, error::Error, fmt::Display, rc::Rc};
+use std::{error::Error, fmt::Display, rc::Rc};
 
 #[derive(Props)]
 pub struct ErrorProps<'a, E: Error> {

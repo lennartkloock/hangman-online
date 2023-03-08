@@ -1,5 +1,5 @@
 use crate::{
-    components::{CenterContainer, Error, MaterialButton, RcError},
+    components::{CenterContainer, MaterialButton, RcError},
     game::{ongoing_game::ws_logic::connect, GameCode},
 };
 use dioxus::prelude::*;
