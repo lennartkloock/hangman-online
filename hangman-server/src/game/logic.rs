@@ -19,12 +19,14 @@ pub enum GameMessage {
     },
 }
 
+type Players = HashMap<UserToken, (User, mpsc::Sender<ServerMessage>)>;
+
 pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     // Game logic
     let code = game.code;
-    let mut players = HashMap::<UserToken, (User, mpsc::Sender<ServerMessage>)>::new();
-    let mut chat: Vec<(String, String)> = vec![];
-    let mut tries_used = 0;
+    let mut players = Players::new();
+    let chat: Vec<(String, String)> = vec![];
+    let tries_used = 0;
 
     while let Some(msg) = rx.recv().await {
         info!("[{code}] received {msg:?}");
@@ -32,16 +34,23 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
             GameMessage::Join { user, sender } => {
                 info!("[{code}] {:?} joins the game", user);
                 let sender_c = sender.clone();
+                let token = user.token;
                 players.insert(user.token, (user, sender));
                 let settings = game.settings.clone();
+                let player_names = player_names(&players);
                 sender_c
                     .log_send(ServerMessage::Init(Game {
                         settings,
-                        players: players.values().map(|(u, _)| u.nickname.clone()).collect(),
+                        players: player_names.clone(),
                         chat: chat.clone(),
                         tries_used,
                     }))
                     .await;
+                // Send update to all clients
+                // TODO: Replace with send_to_all
+                for (_, (_, sender)) in players.iter().filter(|(t, _)| **t != token) {
+                    sender.log_send(ServerMessage::UpdatePlayers(player_names.clone())).await;
+                }
             }
             GameMessage::Leave(token) => {
                 if let Some((user, _)) = players.remove(&token) {
@@ -50,8 +59,17 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                     warn!("there was no user in this game with this token");
                 }
                 // Send update to all clients
+                let player_names = player_names(&players);
+                // TODO: Replace with send_to_all
+                for (_, (_, sender)) in players.iter().filter(|(t, _)| **t != token) {
+                    sender.log_send(ServerMessage::UpdatePlayers(player_names.clone())).await;
+                }
             }
             GameMessage::ClientMessage { message, .. } => match message {},
         }
     }
+}
+
+fn player_names(players: &Players) -> Vec<String> {
+    players.values().map(|(u, _)| u.nickname.clone()).collect()
 }
