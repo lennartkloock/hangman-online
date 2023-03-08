@@ -9,7 +9,9 @@ use fermi::prelude::*;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
 use hangman_data::{ClientMessage, Game, GameSettings, User};
+use std::rc::Rc;
 use thiserror::Error;
+use crate::components::RcError;
 
 mod game_logic;
 mod ws_logic;
@@ -39,11 +41,18 @@ pub enum ConnectionError {
     GameClosed,
 }
 
+impl ConnectionError {
+    pub fn rc(self) -> Rc<Self> {
+        Rc::new(self)
+    }
+}
+
 pub enum GameState {
     /// waiting for connection and init message
     Loading,
     Joined(Game),
-    Error(ConnectionError),
+    /// Rc to make it cloneable
+    Error(Rc<ConnectionError>),
 }
 
 #[inline_props]
@@ -69,7 +78,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
         ws_logic::ws_write(rx, ws_tx.take(), state)
     });
 
-    match &*state.read() {
+    state.with(|s| match s {
         GameState::Loading => cx.render(rsx!(
             CenterContainer {
                 div {
@@ -83,14 +92,14 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             }
         )),
         GameState::Error(e) => {
-            let title = match e {
+            let title = match **e {
                 ConnectionError::GameNotFound => "Game not found",
                 ConnectionError::GameClosed => "The game was closed",
                 _ => "Connection error",
             };
-            cx.render(rsx!(Error {
+            cx.render(rsx!(RcError {
                 title: title,
-                error: e,
+                error: Rc::clone(e),
             }))
         }
         GameState::Joined(Game {
@@ -98,25 +107,29 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             players,
             chat,
             tries_used,
-        }) => cx.render(rsx!(
-            Header { code: code, settings: settings.clone() }
-            div {
-                class: "h-full flex items-center",
+        }) => {
+            let players_component = Players(cx.scope, players);
+            let hangman_component = Hangman(cx.scope, *tries_used);
+            cx.render(rsx!(
+                Header { code: code, settings: settings.clone() }
                 div {
-                    class: "grid game-container gap-y-2 w-full",
-                    Players { players: players.clone() }
-                    h1 {
-                        class: "text-xl font-light text-center",
-                        style: "grid-area: title",
-                        "GUESS THE WORD"
+                    class: "h-full flex items-center",
+                    div {
+                        class: "grid game-container gap-y-2 w-full",
+                        players_component
+                        h1 {
+                            class: "text-xl font-light text-center",
+                            style: "grid-area: title",
+                            "GUESS THE WORD"
+                        }
+                        Word { word: "Hangman" }
+                        Chat { chat: chat.clone() }
+                        hangman_component
                     }
-                    Word { word: "Hangman" }
-                    Chat { chat: chat.clone() }
-                    Hangman { tries_used: *tries_used }
                 }
-            }
-        )),
-    }
+            ))
+        }
+    })
 }
 
 #[inline_props]
@@ -162,8 +175,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
     ))
 }
 
-#[inline_props]
-fn Players(cx: Scope, players: Vec<String>) -> Element {
+fn Players<'a>(cx: &ScopeState, players: &'a Vec<String>) -> Element<'a> {
     cx.render(rsx!(
         ul {
             style: "grid-area: players",
@@ -231,8 +243,7 @@ fn Word<'a>(cx: Scope<'a>, word: &'a str) -> Element<'a> {
     }))
 }
 
-#[inline_props]
-fn Hangman(cx: Scope, tries_used: u32) -> Element {
+fn Hangman(cx: &ScopeState, tries_used: u32) -> Element {
     cx.render(rsx!(
         div {
             style: "grid-area: hangman",

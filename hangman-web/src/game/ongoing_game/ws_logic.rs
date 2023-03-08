@@ -22,7 +22,7 @@ pub fn connect(
         }
         Err(e) => {
             debug!("failed to connect to socket");
-            state.set(GameState::Error(ConnectionError::SyntaxError(e)));
+            state.set(GameState::Error(ConnectionError::SyntaxError(e).rc()));
             (None, None)
         }
     }
@@ -34,27 +34,27 @@ pub async fn ws_read(ws_rx: Option<SplitStream<WebSocket>>, state: UseRef<GameSt
             match msg {
                 Ok(Message::Text(s)) => match serde_json::from_str::<ServerMessage>(&s) {
                     Ok(msg) => game_logic::handle_message(msg, &state),
-                    Err(e) => state.set(GameState::Error(ConnectionError::DeserializeError(e))),
+                    Err(e) => state.set(GameState::Error(ConnectionError::DeserializeError(e).rc())),
                 },
                 Ok(_) => {
                     state.set(GameState::Error(
-                        ConnectionError::DeserializeWrongDataTypeError,
+                        ConnectionError::DeserializeWrongDataTypeError.rc(),
                     ));
                 }
                 Err(WebSocketError::ConnectionClose(gloo_net::websocket::events::CloseEvent {
                     code: 4000,
                     ..
                 })) => {
-                    state.set(GameState::Error(ConnectionError::GameNotFound));
+                    state.set(GameState::Error(ConnectionError::GameNotFound.rc()));
                 }
                 Err(WebSocketError::ConnectionClose(gloo_net::websocket::events::CloseEvent {
                     code: 4001,
                     ..
                 })) => {
-                    state.set(GameState::Error(ConnectionError::GameClosed));
+                    state.set(GameState::Error(ConnectionError::GameClosed.rc()));
                 }
                 Err(e) => {
-                    state.set(GameState::Error(e.into()));
+                    state.set(GameState::Error(ConnectionError::WsError(e).rc()));
                 }
             }
         }
@@ -71,12 +71,12 @@ pub async fn ws_write(
             match serde_json::to_string(&msg) {
                 Ok(s) => match ws_write.send(Message::Text(s)).await {
                     Err(WebSocketError::MessageSendError(e)) => {
-                        state.set(GameState::Error(ConnectionError::SendError(e)))
+                        state.set(GameState::Error(ConnectionError::SendError(e).rc()))
                     }
-                    Err(e) => state.set(GameState::Error(e.into())),
+                    Err(e) => state.set(GameState::Error(ConnectionError::WsError(e).rc())),
                     Ok(_) => {}
                 },
-                Err(e) => state.set(GameState::Error(ConnectionError::SerializeError(e))),
+                Err(e) => state.set(GameState::Error(ConnectionError::SerializeError(e).rc())),
             }
         }
     }
