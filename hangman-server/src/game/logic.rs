@@ -25,7 +25,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     // Game logic
     let code = game.code;
     let mut players = Players::new();
-    let chat: Vec<(String, String)> = vec![];
+    let mut chat: Vec<(String, String)> = vec![];
     let tries_used = 0;
 
     while let Some(msg) = rx.recv().await {
@@ -49,7 +49,9 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                 // Send update to all clients
                 // TODO: Replace with send_to_all
                 for (_, (_, sender)) in players.iter().filter(|(t, _)| **t != token) {
-                    sender.log_send(ServerMessage::UpdatePlayers(player_names.clone())).await;
+                    sender
+                        .log_send(ServerMessage::UpdatePlayers(player_names.clone()))
+                        .await;
                 }
             }
             GameMessage::Leave(token) => {
@@ -61,11 +63,30 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                 // Send update to all clients
                 let player_names = player_names(&players);
                 // TODO: Replace with send_to_all
-                for (_, (_, sender)) in players.iter().filter(|(t, _)| **t != token) {
-                    sender.log_send(ServerMessage::UpdatePlayers(player_names.clone())).await;
+                for (_, (_, sender)) in &players {
+                    sender
+                        .log_send(ServerMessage::UpdatePlayers(player_names.clone()))
+                        .await;
                 }
             }
-            GameMessage::ClientMessage { message, .. } => match message {},
+            GameMessage::ClientMessage {
+                message: ClientMessage::ChatMessage(msg),
+                token,
+            } => {
+                if let Some((user, _)) = &players.get(&token) {
+                    let message = (
+                        user.nickname.clone(),
+                        msg,
+                    );
+                    chat.push(message.clone());
+                    // TODO: Replace with send_to_all
+                    for (_, (_, sender)) in &players {
+                        sender
+                            .log_send(ServerMessage::ChatMessage(message.clone()))
+                            .await;
+                    }
+                }
+            }
         }
     }
 }

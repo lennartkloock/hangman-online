@@ -12,7 +12,7 @@ pub fn handle_message(msg: ServerMessage, state: &UseRef<GameState>) {
                 game.players = players;
             });
         }),
-        ServerMessage::NewMessage(msg) => state.with_mut(|s| {
+        ServerMessage::ChatMessage(msg) => state.with_mut(|s| {
             modify_game(s, |game| {
                 info!("new chat message: {msg:?}");
                 game.chat.push(msg);

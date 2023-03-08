@@ -72,7 +72,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
         to_owned![state];
         ws_logic::ws_read(ws_rx.take(), state)
     });
-    let _ws_write: &Coroutine<ClientMessage> = use_coroutine(cx, |rx| {
+    let ws_write: &Coroutine<ClientMessage> = use_coroutine(cx, |rx| {
         to_owned![state];
         ws_logic::ws_write(rx, ws_tx.take(), state)
     });
@@ -126,7 +126,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                         "GUESS THE WORD"
                     }
                     Word { word: "Hangman" }
-                    Chat { chat: chat.clone() }
+                    Chat { chat: chat.clone(), ws_write: ws_write }
 
                     // Hangman
                     div {
@@ -184,13 +184,13 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 }
 
 #[inline_props]
-fn Chat(cx: Scope, chat: Vec<(String, String)>) -> Element {
+fn Chat<'a>(cx: Scope<'a>, chat: Vec<(String, String)>, ws_write: &'a Coroutine<ClientMessage>) -> Element<'a> {
     let letters = use_atom_ref(cx, LETTERS);
 
     let value = use_state(cx, || "");
     let on_letter_submit = move |evt: FormEvent| {
-        if let Some(c) = evt.values.get("letter").and_then(|s| s.chars().next()) {
-            letters.write().push(c.to_ascii_uppercase());
+        if let Some(msg) = evt.values.get("letter") {
+            ws_write.send(ClientMessage::ChatMessage(msg.to_string()));
             value.set("");
         }
     };
