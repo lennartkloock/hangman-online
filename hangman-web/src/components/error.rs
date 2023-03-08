@@ -12,16 +12,7 @@ pub struct ErrorProps<'a, E: Error> {
 
 pub fn Error<'a, E: Error>(cx: Scope<'a, ErrorProps<'a, E>>) -> Element<'a> {
     let details = cx.props.error.as_ref().map(|e| render_details(cx.scope, e));
-    cx.render(rsx!(
-        CenterContainer {
-            MaterialIcon { name: "warning", color: MaterialIconColor::Light, size: 200 }
-            h1 {
-                class: "text-3xl",
-                "{cx.props.title}"
-            }
-            details
-        }
-    ))
+    render_error(cx, cx.props.title, details)
 }
 
 #[derive(Props)]
@@ -32,12 +23,16 @@ pub struct RcErrorProps<'a, E: Error> {
 
 pub fn RcError<'a, E: Error>(cx: Scope<'a, RcErrorProps<'a, E>>) -> Element<'a> {
     let details = cx.props.error.as_ref().map(|e| render_details(cx.scope, e));
+    render_error(cx, cx.props.title, details)
+}
+
+fn render_error<'a>(cx: &'a ScopeState, title: &'a str, details: Option<Element<'a>>) -> Element<'a> {
     cx.render(rsx!(
         CenterContainer {
             MaterialIcon { name: "warning", color: MaterialIconColor::Light, size: 200 }
             h1 {
                 class: "text-3xl",
-                "{cx.props.title}"
+                "{title}"
             }
             details
         }
