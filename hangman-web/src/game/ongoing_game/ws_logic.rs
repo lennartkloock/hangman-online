@@ -34,7 +34,9 @@ pub async fn ws_read(ws_rx: Option<SplitStream<WebSocket>>, state: UseRef<GameSt
             match msg {
                 Ok(Message::Text(s)) => match serde_json::from_str::<ServerMessage>(&s) {
                     Ok(msg) => game_logic::handle_message(msg, &state),
-                    Err(e) => state.set(GameState::Error(ConnectionError::DeserializeError(e).rc())),
+                    Err(e) => {
+                        state.set(GameState::Error(ConnectionError::DeserializeError(e).rc()))
+                    }
                 },
                 Ok(_) => {
                     state.set(GameState::Error(

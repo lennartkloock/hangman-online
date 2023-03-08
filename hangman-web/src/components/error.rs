@@ -44,7 +44,7 @@ pub fn RcError<'a, E: Error>(cx: Scope<'a, RcErrorProps<'a, E>>) -> Element<'a> 
     ))
 }
 
-fn render_details<'a, D: Display  + 'a>(cx: &'a ScopeState, error: D) -> Element {
+fn render_details<'a, D: Display + 'a>(cx: &'a ScopeState, error: D) -> Element {
     cx.render(rsx!(
         button {
             class: "text-xs hover:underline",
