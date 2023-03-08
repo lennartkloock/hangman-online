@@ -48,7 +48,6 @@ pub enum GameState {
 
 #[inline_props]
 pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element<'a> {
-    // let state = use_state(cx, || GameState::Loading);
     let state = use_ref(cx, || GameState::Loading);
 
     let (ws_tx, ws_rx) = cx.use_hook(|| {
@@ -70,7 +69,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
         ws_logic::ws_write(rx, ws_tx.take(), state)
     });
 
-    match state.get() {
+    match &*state.read() {
         GameState::Loading => cx.render(rsx!(
             CenterContainer {
                 div {
@@ -100,19 +99,19 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             chat,
             tries_used,
         }) => cx.render(rsx!(
-            Header { code: code, settings: settings }
+            Header { code: code, settings: settings.clone() }
             div {
                 class: "h-full flex items-center",
                 div {
                     class: "grid game-container gap-y-2 w-full",
-                    Players { players: players }
+                    Players { players: players.clone() }
                     h1 {
                         class: "text-xl font-light text-center",
                         style: "grid-area: title",
                         "GUESS THE WORD"
                     }
                     Word { word: "Hangman" }
-                    Chat { chat: chat }
+                    Chat { chat: chat.clone() }
                     Hangman { tries_used: *tries_used }
                 }
             }
@@ -121,7 +120,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
 }
 
 #[inline_props]
-fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: &'a GameSettings) -> Element<'a> {
+fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Element<'a> {
     let router = use_router(cx);
 
     let on_copy = move |_| {
@@ -164,7 +163,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: &'a GameSettings) -> 
 }
 
 #[inline_props]
-fn Players<'a>(cx: Scope<'a>, players: &'a Vec<String>) -> Element<'a> {
+fn Players(cx: Scope, players: Vec<String>) -> Element {
     cx.render(rsx!(
         ul {
             style: "grid-area: players",
@@ -175,7 +174,7 @@ fn Players<'a>(cx: Scope<'a>, players: &'a Vec<String>) -> Element<'a> {
 }
 
 #[inline_props]
-fn Chat<'a>(cx: Scope, chat: &'a Vec<(String, String)>) -> Element {
+fn Chat(cx: Scope, chat: Vec<(String, String)>) -> Element {
     let letters = use_atom_ref(cx, LETTERS);
 
     let value = use_state(cx, || "");
