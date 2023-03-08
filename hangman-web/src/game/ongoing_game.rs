@@ -1,5 +1,5 @@
 use crate::{
-    components::{CenterContainer, Error, MaterialButton},
+    components::{CenterContainer, Error, MaterialButton, RcError},
     game::{ongoing_game::ws_logic::connect, GameCode},
 };
 use dioxus::prelude::*;
@@ -11,7 +11,6 @@ use gloo_utils::errors::JsError;
 use hangman_data::{ClientMessage, Game, GameSettings, User};
 use std::rc::Rc;
 use thiserror::Error;
-use crate::components::RcError;
 
 mod game_logic;
 mod ws_logic;
@@ -107,28 +106,37 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             players,
             chat,
             tries_used,
-        }) => {
-            let players_component = Players(cx.scope, players);
-            let hangman_component = Hangman(cx.scope, *tries_used);
-            cx.render(rsx!(
-                Header { code: code, settings: settings.clone() }
+        }) => cx.render(rsx!(
+            Header { code: code, settings: settings.clone() }
+            div {
+                class: "h-full flex items-center",
                 div {
-                    class: "h-full flex items-center",
+                    class: "grid game-container gap-y-2 w-full",
+
+                    // Players
+                    ul {
+                        style: "grid-area: players",
+                        class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg",
+                        players.iter().map(|p| rsx!( li { "{p}" } ))
+                    }
+
+                    h1 {
+                        class: "text-xl font-light text-center",
+                        style: "grid-area: title",
+                        "GUESS THE WORD"
+                    }
+                    Word { word: "Hangman" }
+                    Chat { chat: chat.clone() }
+
+                    // Hangman
                     div {
-                        class: "grid game-container gap-y-2 w-full",
-                        players_component
-                        h1 {
-                            class: "text-xl font-light text-center",
-                            style: "grid-area: title",
-                            "GUESS THE WORD"
-                        }
-                        Word { word: "Hangman" }
-                        Chat { chat: chat.clone() }
-                        hangman_component
+                        style: "grid-area: hangman",
+                        class: "flex justify-center items-center",
+                        "{tries_used}/10"
                     }
                 }
-            ))
-        }
+            }
+        )),
     })
 }
 
@@ -171,16 +179,6 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
                 span { "{lang}" }
             }
             MaterialButton { name: "settings" }
-        }
-    ))
-}
-
-fn Players<'a>(cx: &ScopeState, players: &'a Vec<String>) -> Element<'a> {
-    cx.render(rsx!(
-        ul {
-            style: "grid-area: players",
-            class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg",
-            players.iter().map(|p| rsx!( li { "{p}" } ))
         }
     ))
 }
@@ -241,14 +239,4 @@ fn Word<'a>(cx: Scope<'a>, word: &'a str) -> Element<'a> {
         style: "grid-area: word",
         rendered_word
     }))
-}
-
-fn Hangman(cx: &ScopeState, tries_used: u32) -> Element {
-    cx.render(rsx!(
-        div {
-            style: "grid-area: hangman",
-            class: "flex justify-center items-center",
-            "{tries_used}/10"
-        }
-    ))
 }
