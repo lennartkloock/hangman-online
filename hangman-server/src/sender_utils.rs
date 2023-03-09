@@ -4,7 +4,7 @@ use tokio::sync::{mpsc, mpsc::error::SendError};
 use tracing::warn;
 
 #[async_trait]
-pub trait LogSend<Item: Send> {
+pub trait LogSend<Item> {
     type E;
 
     async fn log_send(&self, msg: Item) -> Option<Self::E>;
