@@ -26,7 +26,11 @@ pub fn RcError<'a, E: Error>(cx: Scope<'a, RcErrorProps<'a, E>>) -> Element<'a> 
     render_error(cx, cx.props.title, details)
 }
 
-fn render_error<'a>(cx: &'a ScopeState, title: &'a str, details: Option<Element<'a>>) -> Element<'a> {
+fn render_error<'a>(
+    cx: &'a ScopeState,
+    title: &'a str,
+    details: Option<Element<'a>>,
+) -> Element<'a> {
     cx.render(rsx!(
         CenterContainer {
             MaterialIcon { name: "warning", color: MaterialIconColor::Light, size: 200 }

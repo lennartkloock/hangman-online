@@ -184,7 +184,11 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 }
 
 #[inline_props]
-fn Chat<'a>(cx: Scope<'a>, chat: Vec<(String, String)>, ws_write: &'a Coroutine<ClientMessage>) -> Element<'a> {
+fn Chat<'a>(
+    cx: Scope<'a>,
+    chat: Vec<(String, String)>,
+    ws_write: &'a Coroutine<ClientMessage>,
+) -> Element<'a> {
     let letters = use_atom_ref(cx, LETTERS);
 
     let value = use_state(cx, || "");

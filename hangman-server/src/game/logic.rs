@@ -50,7 +50,9 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                     }))
                     .await;
                 // Send update to all clients
-                players.iter().filter(|(t, _)| **t != token)
+                players
+                    .iter()
+                    .filter(|(t, _)| **t != token)
                     .map(|(_, (_, s))| s)
                     .send_to_all(ServerMessage::UpdatePlayers(player_names))
                     .await;

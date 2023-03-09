@@ -1,6 +1,5 @@
 use async_trait::async_trait;
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
+use futures::{stream::FuturesUnordered, StreamExt};
 use tokio::sync::{mpsc, mpsc::error::SendError};
 use tracing::warn;
 
