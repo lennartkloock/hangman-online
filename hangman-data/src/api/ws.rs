@@ -14,4 +14,5 @@ pub enum ServerMessage {
     UpdatePlayers(Vec<String>),
     ChatMessage((String, String)),
     UpdateTriesUsed(u32),
+    UpdateWord(String),
 }

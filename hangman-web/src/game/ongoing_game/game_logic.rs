@@ -24,6 +24,12 @@ pub fn handle_message(msg: ServerMessage, state: &UseRef<GameState>) {
                 game.tries_used = tries_used;
             });
         }),
+        ServerMessage::UpdateWord(word) => state.with_mut(|s| {
+            modify_game(s, |game| {
+                info!("updating word: {word}");
+                game.word = word;
+            });
+        }),
     }
 }
 

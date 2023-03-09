@@ -75,6 +75,7 @@ pub struct Game {
     pub players: Vec<String>,
     pub chat: Vec<(String, String)>,
     pub tries_used: u32,
+    pub word: String,
 }
 
 #[cfg(test)]

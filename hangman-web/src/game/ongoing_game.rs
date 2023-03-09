@@ -106,6 +106,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             players,
             chat,
             tries_used,
+            word,
         }) => cx.render(rsx!(
             Header { code: code, settings: settings.clone() }
             div {
@@ -120,12 +121,18 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                         players.iter().map(|p| rsx!( li { "{p}" } ))
                     }
 
+                    // Word
                     h1 {
                         class: "text-xl font-light text-center",
                         style: "grid-area: title",
                         "GUESS THE WORD"
                     }
-                    Word { word: "Hangman" }
+                    pre {
+                        class: "text-6xl font-mono tracking-[.25em] mr-[-.25em] text-center px-2",
+                        style: "grid-area: word",
+                        "{word}"
+                    }
+
                     Chat { chat: chat.clone(), ws_write: ws_write }
 
                     // Hangman
@@ -221,26 +228,4 @@ fn Chat<'a>(
             }
         }
     ))
-}
-
-#[inline_props]
-fn Word<'a>(cx: Scope<'a>, word: &'a str) -> Element<'a> {
-    let letters = use_atom_ref(cx, LETTERS);
-
-    let rendered_word: String = word
-        .chars()
-        .map(|c| {
-            if letters.read().contains(&c.to_ascii_uppercase()) {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-
-    cx.render(rsx!(pre {
-        class: "text-6xl font-mono tracking-[.25em] mr-[-.25em] text-center px-2",
-        style: "grid-area: word",
-        rendered_word
-    }))
 }

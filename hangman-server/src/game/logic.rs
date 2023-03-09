@@ -30,6 +30,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     let mut players = Players::new();
     let mut chat: Vec<(String, String)> = vec![];
     let tries_used = 0;
+    let word = "".to_string();
 
     while let Some(msg) = rx.recv().await {
         info!("[{code}] received {msg:?}");
@@ -47,6 +48,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                         players: player_names.clone(),
                         chat: chat.clone(),
                         tries_used,
+                        word: word.clone(),
                     }))
                     .await;
                 // Send update to all clients
