@@ -1,4 +1,6 @@
 use async_trait::async_trait;
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 use tokio::sync::{mpsc, mpsc::error::SendError};
 use tracing::warn;
 
@@ -23,29 +25,28 @@ impl<Item: Send> LogSend<Item> for mpsc::Sender<Item> {
     }
 }
 
-// TODO
-// #[async_trait]
-// pub trait SendToAll<M> {
-//     type E;
-//
-//     async fn send_to_all(self, msg: M) -> Option<Self::E>;
-// }
-//
-// #[async_trait]
-// impl<M, I> SendToAll<M> for I
-// where
-//     M: Send + Clone + Sync,
-//     I: Iterator<Item = mpsc::Sender<M>> + Send,
-// {
-//     type E = SendError<M>;
-//
-//     async fn send_to_all(self, msg: M) -> Option<Self::E> {
-//         for s in self {
-//             if let Err(e) = s.send(msg.clone()).await {
-//                 warn!("failed to send message to socket: {e}");
-//                 return Some(e);
-//             }
-//         }
-//         None
-//     }
-// }
+#[async_trait]
+pub trait SendToAll<M> {
+    async fn send_to_all(self, msg: M);
+}
+
+#[async_trait]
+impl<'a, M, I> SendToAll<M> for I
+where
+    M: Clone + Send + 'static,
+    I: Iterator<Item = &'a mpsc::Sender<M>> + Send,
+{
+    async fn send_to_all(self, msg: M) {
+        let mut futs: FuturesUnordered<_> = self
+            .map(|s| {
+                let msg = msg.clone();
+                async {
+                    if let Err(e) = s.send(msg).await {
+                        warn!("failed to send message to socket: {e}");
+                    }
+                }
+            })
+            .collect();
+        while let Some(_) = futs.next().await {}
+    }
+}
