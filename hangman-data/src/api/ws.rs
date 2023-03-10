@@ -12,7 +12,10 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     Init(Game),
     UpdatePlayers(Vec<String>),
-    ChatMessage((String, String)),
-    UpdateTriesUsed(u32),
-    UpdateWord(String),
+    Guess {
+        message: (String, String),
+        word: String,
+        tries_used: u32,
+        solved: bool,
+    },
 }

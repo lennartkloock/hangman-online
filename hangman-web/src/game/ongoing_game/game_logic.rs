@@ -12,22 +12,17 @@ pub fn handle_message(msg: ServerMessage, state: &UseRef<GameState>) {
                 game.players = players;
             });
         }),
-        ServerMessage::ChatMessage(msg) => state.with_mut(|s| {
+        ServerMessage::Guess {
+            message,
+            word,
+            tries_used,
+            solved,
+        } => state.with_mut(|s| {
             modify_game(s, |game| {
-                info!("new chat message: {msg:?}");
-                game.chat.push(msg);
-            });
-        }),
-        ServerMessage::UpdateTriesUsed(tries_used) => state.with_mut(|s| {
-            modify_game(s, |game| {
-                info!("updating tries used: {tries_used}");
-                game.tries_used = tries_used;
-            });
-        }),
-        ServerMessage::UpdateWord(word) => state.with_mut(|s| {
-            modify_game(s, |game| {
-                info!("updating word: {word}");
+                info!("new guess: {message:?}");
+                game.chat.push(message);
                 game.word = word;
+                game.tries_used = tries_used;
             });
         }),
     }

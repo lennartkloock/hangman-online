@@ -1,13 +1,16 @@
 //! Game logic
 
 use crate::{
-    game::ServerGame,
+    game::{logic::word::Word, ServerGame},
     sender_utils::{LogSend, SendToAll},
 };
 use hangman_data::{ClientMessage, Game, ServerMessage, User, UserToken};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
+use crate::game::logic::word::GuessResult;
+
+mod word;
 
 #[derive(Debug)]
 pub enum GameMessage {
@@ -29,11 +32,11 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     let code = game.code;
     let mut players = Players::new();
     let mut chat: Vec<(String, String)> = vec![];
-    let tries_used = 0;
-    let word = "".to_string();
+    let mut tries_used = 0;
+    let mut word = Word::generate(&game.settings.language);
 
     while let Some(msg) = rx.recv().await {
-        info!("[{code}] received {msg:?}");
+        debug!("[{code}] received {msg:?}");
         match msg {
             GameMessage::Join { user, sender } => {
                 info!("[{code}] {:?} joins the game", user);
@@ -48,7 +51,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                         players: player_names.clone(),
                         chat: chat.clone(),
                         tries_used,
-                        word: word.clone(),
+                        word: word.word(),
                     }))
                     .await;
                 // Send update to all clients
@@ -79,10 +82,28 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                 if let Some((user, _)) = &players.get(&token) {
                     let message = (user.nickname.clone(), msg);
                     chat.push(message.clone());
+                    let guess = word.guess(message.1.clone());
+                    match guess {
+                        GuessResult::Miss => {
+                            info!("[{code}] {} guessed wrong", user.nickname);
+                            tries_used += 1;
+                        },
+                        GuessResult::Hit => {
+                            info!("[{code}] {} guessed right", user.nickname);
+                        }
+                        GuessResult::Solved => {
+                            info!("[{code}] {} solved the word", user.nickname);
+                        }
+                    }
                     players
                         .values()
                         .map(|(_, s)| s)
-                        .send_to_all(ServerMessage::ChatMessage(message))
+                        .send_to_all(ServerMessage::Guess {
+                            message,
+                            word: word.word(),
+                            tries_used,
+                            solved: guess == GuessResult::Solved,
+                        })
                         .await;
                 }
             }
