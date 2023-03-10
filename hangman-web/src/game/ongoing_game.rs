@@ -5,7 +5,6 @@ use crate::{
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
-use fermi::prelude::*;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
 use hangman_data::{ClientMessage, Game, GameSettings, User};
@@ -14,8 +13,6 @@ use thiserror::Error;
 
 mod game_logic;
 mod ws_logic;
-
-static LETTERS: AtomRef<Vec<char>> = |_| vec![];
 
 #[derive(Debug, Error)]
 pub enum ConnectionError {
@@ -196,8 +193,6 @@ fn Chat<'a>(
     chat: Vec<(String, String)>,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let letters = use_atom_ref(cx, LETTERS);
-
     let value = use_state(cx, || "");
     let on_letter_submit = move |evt: FormEvent| {
         if let Some(msg) = evt.values.get("letter") {

@@ -46,6 +46,6 @@ where
                 }
             })
             .collect();
-        while let Some(_) = futs.next().await {}
+        while (futs.next().await).is_some() {}
     }
 }

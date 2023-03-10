@@ -16,7 +16,7 @@ pub fn handle_message(msg: ServerMessage, state: &UseRef<GameState>) {
             message,
             word,
             tries_used,
-            solved,
+            solved: _,
         } => state.with_mut(|s| {
             modify_game(s, |game| {
                 info!("new guess: {message:?}");

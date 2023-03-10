@@ -48,7 +48,7 @@ impl Word {
         if graphemes == self.target {
             self.current = graphemes
                 .into_iter()
-                .map(|s| Character::Guessed(s))
+                .map(Character::Guessed)
                 .collect();
             GuessResult::Solved
         } else if graphemes.len() == 1 {
@@ -65,13 +65,7 @@ impl Word {
                 }
                 if !found {
                     GuessResult::Miss
-                } else if self.current.iter().all(|c| {
-                    if let Character::Guessed(_) = c {
-                        true
-                    } else {
-                        false
-                    }
-                }) {
+                } else if self.current.iter().all(|c| matches!(c, Character::Guessed(_))) {
                     GuessResult::Solved
                 } else {
                     GuessResult::Hit
