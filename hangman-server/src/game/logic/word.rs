@@ -7,6 +7,7 @@ pub struct Word {
     current: Vec<Character>,
 }
 
+#[derive(PartialEq)]
 pub enum GuessResult {
     Hit,
     Miss,
