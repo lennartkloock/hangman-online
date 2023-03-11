@@ -1,5 +1,13 @@
 use hangman_data::GameLanguage;
-use std::fmt::{Display, Formatter};
+use rand::Rng;
+use std::{
+    fmt::{Display, Formatter},
+    path::PathBuf,
+    str::FromStr,
+};
+use thiserror::Error;
+use tokio::{fs, io};
+use tracing::info;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Word {
@@ -30,11 +38,14 @@ impl Display for Character {
 }
 
 impl Word {
-    pub fn generate(language: &GameLanguage) -> Self {
-        Self {
-            target: "Banane".graphemes(true).map(|s| s.to_string()).collect(),
-            current: vec![Character::Unknown; 6],
-        }
+    pub async fn generate(language: &GameLanguage, limit: u32) -> Result<Self, RandomWordError> {
+        let random = random_word_for_language(language, limit).await?;
+        info!("Generated random word for {language}: {random}");
+        let target: Vec<String> = random.graphemes(true).map(|s| s.to_string()).collect();
+        Ok(Self {
+            current: vec![Character::Unknown; target.len()],
+            target,
+        })
     }
 
     pub fn word(&self) -> String {
@@ -44,12 +55,15 @@ impl Word {
     }
 
     pub fn guess(&mut self, s: String) -> GuessResult {
-        let graphemes: Vec<String> = s.graphemes(true).map(|s| s.to_string()).collect();
-        if graphemes == self.target {
-            self.current = graphemes
-                .into_iter()
-                .map(Character::Guessed)
-                .collect();
+        let graphemes: Vec<String> = s.graphemes(true).map(|s| s.to_lowercase().to_string()).collect();
+        if self
+            .target
+            .iter()
+            .map(|s| s.to_lowercase().to_string())
+            .collect::<Vec<String>>()
+            == graphemes
+        {
+            self.current = self.target.iter().map(|s| Character::Guessed(s.clone())).collect();
             GuessResult::Solved
         } else if graphemes.len() == 1 {
             if let Some(g) = graphemes.get(0) {
@@ -58,14 +72,18 @@ impl Word {
                     .target
                     .iter()
                     .enumerate()
-                    .filter(|t| t.1.to_lowercase() == g.to_lowercase())
+                    .filter(|t| t.1.to_lowercase() == *g)
                 {
                     self.current[i] = Character::Guessed(self.target[i].clone());
                     found = true;
                 }
                 if !found {
                     GuessResult::Miss
-                } else if self.current.iter().all(|c| matches!(c, Character::Guessed(_))) {
+                } else if self
+                    .current
+                    .iter()
+                    .all(|c| matches!(c, Character::Guessed(_)))
+                {
                     GuessResult::Solved
                 } else {
                     GuessResult::Hit
@@ -77,4 +95,55 @@ impl Word {
             GuessResult::Miss
         }
     }
+}
+
+fn wordlist_path_for_language(lang: &GameLanguage) -> PathBuf {
+    let mut path = PathBuf::new();
+    path.push("wordlists");
+    match lang {
+        GameLanguage::English => path.push("eng-com_web-public_2018_1M-words.txt"),
+        GameLanguage::German => path.push("deu-de_web_2021_1M-words.txt"),
+    }
+    path
+}
+
+#[derive(Debug, Error)]
+pub enum RandomWordError {
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+    #[error("limit is too high")]
+    LimitTooHigh,
+    #[error("failed to parse wordlist")]
+    ParseError,
+}
+
+async fn random_word_for_language(
+    lang: &GameLanguage,
+    limit: u32,
+) -> Result<String, RandomWordError> {
+    let file = fs::read_to_string(wordlist_path_for_language(lang))
+        .await
+        .map_err(|e| RandomWordError::Io(e))?;
+    let n = rand::thread_rng().gen_range(0..limit);
+    let mut line = file
+        .lines()
+        .skip_while(|s| {
+            if let Some(id) = s
+                .split_ascii_whitespace()
+                .nth(0)
+                .map(|i| u32::from_str(i).ok())
+                .flatten()
+            {
+                id <= 100
+            } else {
+                // TODO: Skips word if parse error occurs, but should return error
+                true
+            }
+        })
+        .nth(n as usize)
+        .ok_or(RandomWordError::LimitTooHigh)?
+        .split_ascii_whitespace();
+    line.nth(1)
+        .map(|s| s.to_string())
+        .ok_or(RandomWordError::ParseError)
 }

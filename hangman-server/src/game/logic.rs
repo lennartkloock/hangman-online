@@ -33,7 +33,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     let mut players = Players::new();
     let mut chat: Vec<(String, String)> = vec![];
     let mut tries_used = 0;
-    let mut word = Word::generate(&game.settings.language);
+    let mut word = Word::generate(&game.settings.language, 10000).await.unwrap();
 
     while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
