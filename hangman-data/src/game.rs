@@ -54,6 +54,12 @@ pub enum GameLanguage {
     German,
 }
 
+impl GameLanguage {
+    pub fn all() -> Vec<Self> {
+        vec![Self::English, Self::German]
+    }
+}
+
 impl Display for GameLanguage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let lang = match self {
