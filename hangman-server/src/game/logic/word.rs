@@ -40,7 +40,7 @@ impl Display for Character {
 impl Word {
     pub async fn generate(language: &GameLanguage, limit: u32) -> Result<Self, RandomWordError> {
         let random = random_word_for_language(language, limit).await?;
-        info!("Generated random word for {language}: {random}");
+        info!("generated random word for {language}: {random}");
         let target: Vec<String> = random.graphemes(true).map(|s| s.to_string()).collect();
         Ok(Self {
             current: vec![Character::Unknown; target.len()],

@@ -62,9 +62,10 @@ async fn handle_socket(
 
     // Send out messages sent to the internal client socket
     let (tx, mut rx) = mpsc::channel(1);
+    let nick = user.nickname.clone();
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            debug!("sending {msg:?} to client {}", user.nickname);
+            debug!("sending {msg:?} to client {}", nick);
             match serde_json::to_string(&msg) {
                 Ok(t) => {
                     if let Err(e) = sender.send(Message::Text(t)).await {
