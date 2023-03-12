@@ -219,9 +219,13 @@ fn Chat<'a>(
                             ChatColor::Green => "bg-green-900/30",
                             ChatColor::Red => "bg-red-900/30",
                         };
+                        let text = match from {
+                            Some(from) => format!("{from}: {content}"),
+                            None => format!("{content}"),
+                        };
                         rsx!(li {
                             class: "{color_class} px-2 py-0.5",
-                            "{from}: {content}"
+                            "{text}"
                         })
                     })
             }

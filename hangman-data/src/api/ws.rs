@@ -10,7 +10,7 @@ pub enum ClientMessage {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ChatMessage {
-    pub from: String,
+    pub from: Option<String>,
     pub content: String,
     pub color: ChatColor,
 }
@@ -28,11 +28,11 @@ pub enum ChatColor {
 pub enum ServerMessage {
     Init(Game),
     UpdatePlayers(Vec<String>),
-    Guess {
-        message: ChatMessage,
+    UpdateGame {
         word: String,
         tries_used: u32,
     },
+    ChatMessage(ChatMessage),
     Solved,
     GameOver,
 }

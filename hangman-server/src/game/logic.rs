@@ -27,6 +27,7 @@ pub enum GameMessage {
 
 type Players = HashMap<UserToken, (User, mpsc::Sender<ServerMessage>)>;
 
+// TODO: Too large function, split into functions on a struct
 pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     // Game logic
     let code = game.code;
@@ -41,7 +42,8 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
             GameMessage::Join { user, sender } => {
                 info!("[{code}] {:?} joins the game", user);
                 let sender_c = sender.clone();
-                let token = user.token;
+                let token = user.token; // Copy token
+                let nickname = user.nickname.clone(); // Clone nickname
                 players.insert(user.token, (user, sender));
                 let settings = game.settings.clone();
                 let player_names = player_names(&players);
@@ -61,19 +63,43 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                     .map(|(_, (_, s))| s)
                     .send_to_all(ServerMessage::UpdatePlayers(player_names))
                     .await;
+
+                let message = ChatMessage {
+                    from: None,
+                    content: format!("→ {} joined the game", nickname),
+                    color: ChatColor::Neutral,
+                };
+                chat.push(message.clone());
+                players
+                    .values()
+                    .map(|(_, s)| s)
+                    .send_to_all(ServerMessage::ChatMessage(message))
+                    .await;
             }
             GameMessage::Leave(token) => {
                 if let Some((user, _)) = players.remove(&token) {
                     info!("[{code}] {:?} left the game", user);
+                    // Send update to all clients
+                    players
+                        .values()
+                        .map(|(_, s)| s)
+                        .send_to_all(ServerMessage::UpdatePlayers(player_names(&players)))
+                        .await;
+
+                    let message = ChatMessage {
+                        from: None,
+                        content: format!("← {} left the game", user.nickname),
+                        color: ChatColor::Neutral,
+                    };
+                    chat.push(message.clone());
+                    players
+                        .values()
+                        .map(|(_, s)| s)
+                        .send_to_all(ServerMessage::ChatMessage(message))
+                        .await;
                 } else {
                     warn!("there was no user in this game with this token");
                 }
-                // Send update to all clients
-                players
-                    .values()
-                    .map(|(_, s)| s)
-                    .send_to_all(ServerMessage::UpdatePlayers(player_names(&players)))
-                    .await;
             }
             GameMessage::ClientMessage {
                 message: ClientMessage::ChatMessage(msg),
@@ -81,23 +107,30 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
             } => {
                 if let Some((user, _)) = &players.get(&token) {
                     let guess = word.guess(msg.clone());
-                    let color = match guess {
+                    match guess {
                         GuessResult::Miss => {
                             info!("[{code}] {} guessed wrong", user.nickname);
                             tries_used += 1;
-                            ChatColor::Red
                         },
-                        GuessResult::Hit => {
-                            info!("[{code}] {} guessed right", user.nickname);
-                            ChatColor::Green
-                        }
-                        GuessResult::Solved => {
-                            info!("[{code}] {} solved the word", user.nickname);
-                            ChatColor::Green
-                        }
+                        GuessResult::Hit => info!("[{code}] {} guessed right", user.nickname),
+                        GuessResult::Solved => info!("[{code}] {} solved the word", user.nickname),
+                    };
+                    players
+                        .values()
+                        .map(|(_, s)| s)
+                        .send_to_all(ServerMessage::UpdateGame {
+                            word: word.word(),
+                            tries_used,
+                        })
+                        .await;
+
+                    let color = match guess {
+                        GuessResult::Hit => ChatColor::Green,
+                        GuessResult::Miss => ChatColor::Red,
+                        GuessResult::Solved => ChatColor::Green,
                     };
                     let message = ChatMessage {
-                        from: user.nickname.clone(),
+                        from: Some(user.nickname.clone()),
                         content: msg,
                         color,
                     };
@@ -105,12 +138,9 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                     players
                         .values()
                         .map(|(_, s)| s)
-                        .send_to_all(ServerMessage::Guess {
-                            message,
-                            word: word.word(),
-                            tries_used,
-                        })
+                        .send_to_all(ServerMessage::ChatMessage(message))
                         .await;
+
                     if guess == GuessResult::Solved {
                         players
                             .values()

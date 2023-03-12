@@ -7,25 +7,29 @@ pub fn handle_message(msg: ServerMessage, state: &UseRef<GameState>) {
     match msg {
         ServerMessage::Init(data) => state.set(GameState::Joined(data)),
         ServerMessage::UpdatePlayers(players) => state.with_mut(|s| {
-            modify_game(s, |game| {
-                info!("updating player list: {players:?}");
-                game.players = players;
-            });
+            info!("updating player list: {players:?}");
+            modify_game(s, |game| game.players = players);
         }),
-        ServerMessage::Guess {
-            message,
+        ServerMessage::UpdateGame {
             word,
             tries_used,
         } => state.with_mut(|s| {
+            info!("new guess: {word}");
             modify_game(s, |game| {
-                info!("new guess: {message:?}");
-                game.chat.push(message);
                 game.word = word;
                 game.tries_used = tries_used;
             });
         }),
-        ServerMessage::Solved => {}
-        ServerMessage::GameOver => {}
+        ServerMessage::ChatMessage(message) => state.with_mut(|s| {
+            info!("new chat message: {message:?}");
+            modify_game(s, |game| game.chat.push(message));
+        }),
+        ServerMessage::Solved => {
+            info!("game was solved");
+        }
+        ServerMessage::GameOver => {
+            info!("game was lost");
+        }
     }
 }
 
