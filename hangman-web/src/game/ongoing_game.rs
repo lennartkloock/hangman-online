@@ -5,21 +5,26 @@ use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
-use hangman_data::{ChatColor, GameState};
 use thiserror::Error;
 
+use hangman_data::{ChatColor, GameState};
 use hangman_data::{ChatMessage, ClientMessage, Game, GameSettings, User};
 
 use crate::{
     components::{CenterContainer, MaterialButton, RcError},
     game::{ongoing_game::ws_logic::connect, GameCode},
 };
+use crate::urls;
+use crate::urls::UrlError;
 
 mod game_logic;
 mod ws_logic;
 
 #[derive(Debug, Error)]
-pub enum ConnectionError {
+enum ConnectionError {
+    #[error("failed to retrieve url: {0}")]
+    UrlError(#[from] UrlError),
+
     #[error("failed to establish a connection due to syntax error: {0}")]
     SyntaxError(JsError),
     #[error("failed to serialize message: {0}")]
@@ -59,15 +64,12 @@ pub enum ClientState {
 pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element<'a> {
     let state = use_ref(cx, || ClientState::Loading);
 
-    let (ws_tx, ws_rx) = cx.use_hook(|| {
-        let query = form_urlencoded::Serializer::new(String::new())
-            .append_pair("nickname", &user.nickname)
-            .append_pair("token", &format!("{}", user.token))
-            .finish();
-        connect(
-            state,
-            format!("ws://localhost:8000/api/game/{code}/ws?{query}"),
-        )
+    let (ws_tx, ws_rx) = cx.use_hook(|| match urls::game_ws_url(code, user) {
+        Ok(url) => connect(state, url),
+        Err(e) => {
+            state.set(ClientState::Error(ConnectionError::UrlError(e).rc()));
+            (None, None)
+        },
     });
     let _ws_read: &Coroutine<()> = use_coroutine(cx, |_| {
         to_owned![state];

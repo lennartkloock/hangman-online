@@ -14,6 +14,7 @@ mod game;
 mod global_state;
 mod home;
 mod storage;
+mod urls;
 
 fn main() {
     let log_level = if cfg!(debug_assertions) {
