@@ -51,12 +51,23 @@ impl Display for GameCode {
 #[serde(rename_all = "snake_case")]
 pub enum GameLanguage {
     English,
+    Spanish,
+    French,
     German,
+    Russian,
+    Turkish,
 }
 
 impl GameLanguage {
     pub fn all() -> Vec<Self> {
-        vec![Self::English, Self::German]
+        vec![
+            Self::English,
+            Self::Spanish,
+            Self::French,
+            Self::German,
+            Self::Russian,
+            Self::Turkish,
+        ]
     }
 }
 
@@ -64,7 +75,11 @@ impl Display for GameLanguage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let lang = match self {
             GameLanguage::English => "English",
+            GameLanguage::French => "Français",
+            GameLanguage::Spanish => "Español",
             GameLanguage::German => "Deutsch",
+            GameLanguage::Russian => "Русский",
+            GameLanguage::Turkish => "Türkçe",
         };
         write!(f, "{}", lang)
     }

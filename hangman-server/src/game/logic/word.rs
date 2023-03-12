@@ -102,7 +102,11 @@ fn wordlist_path_for_language(lang: &GameLanguage) -> PathBuf {
     path.push("wordlists");
     match lang {
         GameLanguage::English => path.push("eng-com_web-public_2018_1M-words.txt"),
+        GameLanguage::Spanish => path.push("spa_web_2016_1M-words.txt"),
+        GameLanguage::French => path.push("fra_mixed_2009_1M-words.txt"),
         GameLanguage::German => path.push("deu-de_web_2021_1M-words.txt"),
+        GameLanguage::Russian => path.push("rus-ru_web-public_2019_1M-words.txt"),
+        GameLanguage::Turkish => path.push("tur-tr_web_2019_1M-words.txt"),
     }
     path
 }
