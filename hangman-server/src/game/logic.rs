@@ -150,7 +150,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                             .map(|(_, s)| s)
                             .send_to_all(ServerMessage::ChatMessage(ChatMessage {
                                 from: None,
-                                content: "You found the word!".to_string(),
+                                content: "You guessed the word!".to_string(),
                                 color: ChatColor::Green,
                             }))
                             .await;
