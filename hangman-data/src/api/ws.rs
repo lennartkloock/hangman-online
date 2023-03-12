@@ -1,4 +1,4 @@
-use crate::Game;
+use crate::{Game, GameState};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -33,6 +33,5 @@ pub enum ServerMessage {
         tries_used: u32,
     },
     ChatMessage(ChatMessage),
-    Solved,
-    GameOver,
+    UpdateGameState(GameState),
 }

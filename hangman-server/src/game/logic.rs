@@ -4,7 +4,7 @@ use crate::{
     game::{logic::word::Word, ServerGame},
     sender_utils::{LogSend, SendToAll},
 };
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, ServerMessage, User, UserToken};
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameState, ServerMessage, User, UserToken};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
@@ -31,6 +31,7 @@ type Players = HashMap<UserToken, (User, mpsc::Sender<ServerMessage>)>;
 pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     // Game logic
     let code = game.code;
+    let mut state = GameState::Playing;
     let mut players = Players::new();
     let mut chat: Vec<ChatMessage> = vec![];
     let mut tries_used = 0;
@@ -50,6 +51,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                 sender_c
                     .log_send(ServerMessage::Init(Game {
                         settings,
+                        state: state.clone(),
                         players: player_names.clone(),
                         chat: chat.clone(),
                         tries_used,
@@ -142,12 +144,33 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                         .await;
 
                     if guess == GuessResult::Solved {
+                        state = GameState::Solved;
                         players
                             .values()
                             .map(|(_, s)| s)
-                            .send_to_all(ServerMessage::Solved)
+                            .send_to_all(ServerMessage::ChatMessage(ChatMessage {
+                                from: None,
+                                content: "You found the word!".to_string(),
+                                color: ChatColor::Green,
+                            }))
+                            .await;
+                    } else if tries_used == 9 {
+                        state = GameState::OutOfTries;
+                        players
+                            .values()
+                            .map(|(_, s)| s)
+                            .send_to_all(ServerMessage::ChatMessage(ChatMessage {
+                                from: None,
+                                content: format!("No tries left! The word was {}", word.target()),
+                                color: ChatColor::Red,
+                            }))
                             .await;
                     }
+                    players
+                        .values()
+                        .map(|(_, s)| s)
+                        .send_to_all(ServerMessage::UpdateGameState(state.clone()))
+                        .await;
                 }
             }
         }

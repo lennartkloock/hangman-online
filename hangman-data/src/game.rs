@@ -91,9 +91,17 @@ pub struct GameSettings {
     pub language: GameLanguage,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub enum GameState {
+    Playing,
+    Solved,
+    OutOfTries,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Game {
     pub settings: GameSettings,
+    pub state: GameState,
     pub players: Vec<String>,
     pub chat: Vec<ChatMessage>,
     pub tries_used: u32,

@@ -5,7 +5,7 @@ use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
-use hangman_data::ChatColor;
+use hangman_data::{ChatColor, GameState};
 use thiserror::Error;
 
 use hangman_data::{ChatMessage, ClientMessage, Game, GameSettings, User};
@@ -47,7 +47,7 @@ impl ConnectionError {
     }
 }
 
-pub enum GameState {
+pub enum ClientState {
     /// waiting for connection and init message
     Loading,
     Joined(Game),
@@ -57,7 +57,7 @@ pub enum GameState {
 
 #[inline_props]
 pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element<'a> {
-    let state = use_ref(cx, || GameState::Loading);
+    let state = use_ref(cx, || ClientState::Loading);
 
     let (ws_tx, ws_rx) = cx.use_hook(|| {
         let query = form_urlencoded::Serializer::new(String::new())
@@ -79,7 +79,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
     });
 
     state.with(|s| match s {
-        GameState::Loading => cx.render(rsx!(
+        ClientState::Loading => cx.render(rsx!(
             CenterContainer {
                 div {
                     class: "flex flex-col gap-2",
@@ -91,7 +91,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 }
             }
         )),
-        GameState::Error(e) => {
+        ClientState::Error(e) => {
             let title = match **e {
                 ConnectionError::GameNotFound => "Game not found",
                 ConnectionError::GameClosed => "The game was closed",
@@ -102,8 +102,9 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: Rc::clone(e),
             }))
         }
-        GameState::Joined(Game {
+        ClientState::Joined(Game {
             settings,
+            state,
             players,
             chat,
             tries_used,
@@ -142,7 +143,11 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                         "{word}"
                     }
 
-                    Chat { chat: chat.clone(), ws_write: ws_write }
+                    Chat {
+                        game_state: state.clone(),
+                        chat: chat.clone(),
+                        ws_write: ws_write
+                    }
 
                     // Hangman
                     div {
@@ -202,6 +207,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 #[inline_props]
 fn Chat<'a>(
     cx: Scope<'a>,
+    game_state: GameState,
     chat: Vec<ChatMessage>,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
@@ -246,6 +252,7 @@ fn Chat<'a>(
                     r#type: "text",
                     name: "letter",
                     placeholder: "Guess something...",
+                    disabled: *game_state != GameState::Playing,
                     value: "{value}",
                 }
             }

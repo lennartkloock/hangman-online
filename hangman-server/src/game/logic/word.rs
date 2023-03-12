@@ -48,6 +48,10 @@ impl Word {
         })
     }
 
+    pub fn target(&self) -> String {
+        self.target.join("")
+    }
+
     pub fn word(&self) -> String {
         self.current
             .iter()
