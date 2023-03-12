@@ -170,6 +170,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 
     let on_copy = move |_| {
         // TODO: Provide feedback to the user
+        // Fixme: Doesn't work in other browsers than FF
         match web_sys::window().and_then(|w| w.navigator().clipboard()) {
             Some(c) => {
                 let mut url = router.current_location().url.clone();
