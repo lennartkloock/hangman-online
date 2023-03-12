@@ -4,7 +4,7 @@ use crate::{
     game::{logic::word::Word, ServerGame},
     sender_utils::{LogSend, SendToAll},
 };
-use hangman_data::{ClientMessage, Game, ServerMessage, User, UserToken};
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, ServerMessage, User, UserToken};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
@@ -31,7 +31,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     // Game logic
     let code = game.code;
     let mut players = Players::new();
-    let mut chat: Vec<(String, String)> = vec![];
+    let mut chat: Vec<ChatMessage> = vec![];
     let mut tries_used = 0;
     let mut word = Word::generate(&game.settings.language, 10000).await.unwrap();
 
@@ -80,21 +80,28 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                 token,
             } => {
                 if let Some((user, _)) = &players.get(&token) {
-                    let message = (user.nickname.clone(), msg);
-                    chat.push(message.clone());
-                    let guess = word.guess(message.1.clone());
-                    match guess {
+                    let guess = word.guess(msg.clone());
+                    let color = match guess {
                         GuessResult::Miss => {
                             info!("[{code}] {} guessed wrong", user.nickname);
                             tries_used += 1;
+                            ChatColor::Red
                         },
                         GuessResult::Hit => {
                             info!("[{code}] {} guessed right", user.nickname);
+                            ChatColor::Green
                         }
                         GuessResult::Solved => {
                             info!("[{code}] {} solved the word", user.nickname);
+                            ChatColor::Green
                         }
-                    }
+                    };
+                    let message = ChatMessage {
+                        from: user.nickname.clone(),
+                        content: msg,
+                        color,
+                    };
+                    chat.push(message.clone());
                     players
                         .values()
                         .map(|(_, s)| s)
@@ -102,9 +109,15 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                             message,
                             word: word.word(),
                             tries_used,
-                            solved: guess == GuessResult::Solved,
                         })
                         .await;
+                    if guess == GuessResult::Solved {
+                        players
+                            .values()
+                            .map(|(_, s)| s)
+                            .send_to_all(ServerMessage::Solved)
+                            .await;
+                    }
                 }
             }
         }

@@ -1,15 +1,19 @@
-use crate::{
-    components::{CenterContainer, MaterialButton, RcError},
-    game::{ongoing_game::ws_logic::connect, GameCode},
-};
+use std::rc::Rc;
+
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
-use hangman_data::{ClientMessage, Game, GameSettings, User};
-use std::rc::Rc;
+use hangman_data::ChatColor;
 use thiserror::Error;
+
+use hangman_data::{ChatMessage, ClientMessage, Game, GameSettings, User};
+
+use crate::{
+    components::{CenterContainer, MaterialButton, RcError},
+    game::{ongoing_game::ws_logic::connect, GameCode},
+};
 
 mod game_logic;
 mod ws_logic;
@@ -190,7 +194,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 #[inline_props]
 fn Chat<'a>(
     cx: Scope<'a>,
-    chat: Vec<(String, String)>,
+    chat: Vec<ChatMessage>,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
     let value = use_state(cx, || "");
@@ -206,8 +210,20 @@ fn Chat<'a>(
             class: "flex flex-col gap-0",
             style: "grid-area: chat",
             ul {
-                class: "bg-zinc-800 rounded-t-lg overflow-y-auto px-2 py-1 font-light flex flex-col-reverse h-64",
-                chat.iter().rev().map(|m| rsx!(li { "{m.0}: {m.1}" }))
+                class: "bg-zinc-800 rounded-t-lg overflow-y-auto font-light flex flex-col-reverse h-64",
+                chat.iter()
+                    .rev()
+                    .map(|ChatMessage { from, content, color }| {
+                        let color_class = match color {
+                            ChatColor::Neutral => "",
+                            ChatColor::Green => "bg-green-900/40",
+                            ChatColor::Red => "bg-red-900/40",
+                        };
+                        rsx!(li {
+                            class: "{color_class} px-2 py-1",
+                            "{from}: {content}"
+                        })
+                    })
             }
             form {
                 class: "w-full",

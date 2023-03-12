@@ -7,6 +7,7 @@ use std::{
     str::FromStr,
 };
 use thiserror::Error;
+use crate::ChatMessage;
 
 /// Two bytes that represent a game code
 ///
@@ -94,7 +95,7 @@ pub struct GameSettings {
 pub struct Game {
     pub settings: GameSettings,
     pub players: Vec<String>,
-    pub chat: Vec<(String, String)>,
+    pub chat: Vec<ChatMessage>,
     pub tries_used: u32,
     pub word: String,
 }

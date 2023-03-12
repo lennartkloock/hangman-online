@@ -55,6 +55,7 @@ impl Word {
     }
 
     pub fn guess(&mut self, s: String) -> GuessResult {
+        // TODO: Feels a bit messy
         let graphemes: Vec<String> = s.graphemes(true).map(|s| s.to_lowercase().to_string()).collect();
         if self
             .target
