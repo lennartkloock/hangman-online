@@ -118,8 +118,16 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                     // Players
                     ul {
                         style: "grid-area: players",
-                        class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg",
-                        players.iter().map(|p| rsx!( li { "{p}" } ))
+                        class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg flex flex-col gap-2",
+                        players
+                            .iter()
+                            .map(|p| rsx!(
+                                li {
+                                    class: "flex items-center gap-1",
+                                    MaterialIcon { name: "account_circle", color: MaterialIconColor::Light, size: 30 }
+                                    "{p}"
+                                }
+                            ))
                     }
 
                     // Word
