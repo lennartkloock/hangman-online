@@ -5,17 +5,18 @@ use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
+use log::error;
 use thiserror::Error;
 
 use hangman_data::{ChatColor, GameState};
 use hangman_data::{ChatMessage, ClientMessage, Game, GameSettings, User};
 
+use crate::urls;
+use crate::urls::UrlError;
 use crate::{
     components::{CenterContainer, MaterialButton, RcError},
     game::{ongoing_game::ws_logic::connect, GameCode},
 };
-use crate::urls;
-use crate::urls::UrlError;
 
 mod game_logic;
 mod ws_logic;
@@ -69,7 +70,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
         Err(e) => {
             state.set(ClientState::Error(ConnectionError::UrlError(e).rc()));
             (None, None)
-        },
+        }
     });
     let _ws_read: &Coroutine<()> = use_coroutine(cx, |_| {
         to_owned![state];
@@ -169,20 +170,21 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 
     let on_copy = move |_| {
         // TODO: Provide feedback to the user
-        if let Some(c) = web_sys::window().and_then(|w| w.navigator().clipboard()) {
-            let mut url = router.current_location().url.clone();
-            url.set_path(&format!("/game/{code}"));
-            cx.spawn(async move {
-                if wasm_bindgen_futures::JsFuture::from(c.write_text(url.as_str()))
-                    .await
-                    .is_err()
-                {
-                    // Write failed, no permission
-                    todo!();
-                }
-            });
-        } else {
-            todo!();
+        match web_sys::window().and_then(|w| w.navigator().clipboard()) {
+            Some(c) => {
+                let mut url = router.current_location().url.clone();
+                url.set_path(&format!("/game/{code}"));
+                cx.spawn(async move {
+                    if let Err(e) =
+                        wasm_bindgen_futures::JsFuture::from(c.write_text(url.as_str())).await
+                    {
+                        error!("failed to write to clipboard, no permission: {e:?}");
+                    }
+                });
+            }
+            None => {
+                error!("failed to retrieve clipboard");
+            }
         }
     };
 
