@@ -216,11 +216,11 @@ fn Chat<'a>(
                     .map(|ChatMessage { from, content, color }| {
                         let color_class = match color {
                             ChatColor::Neutral => "",
-                            ChatColor::Green => "bg-green-900/40",
-                            ChatColor::Red => "bg-red-900/40",
+                            ChatColor::Green => "bg-green-900/30",
+                            ChatColor::Red => "bg-red-900/30",
                         };
                         rsx!(li {
-                            class: "{color_class} px-2 py-1",
+                            class: "{color_class} px-2 py-0.5",
                             "{from}: {content}"
                         })
                     })
