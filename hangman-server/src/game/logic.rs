@@ -161,7 +161,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                             .map(|(_, s)| s)
                             .send_to_all(ServerMessage::ChatMessage(ChatMessage {
                                 from: None,
-                                content: format!("No tries left! The word was {}", word.target()),
+                                content: format!("No tries left! The word was \"{}\"", word.target()),
                                 color: ChatColor::Red,
                             }))
                             .await;
