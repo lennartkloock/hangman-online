@@ -75,7 +75,7 @@ pub fn CreateGame(cx: Scope) -> Element {
                             MaterialButton { name: "done" }
                         }
                         div {
-                            class: "m-2",
+                            class: "p-6",
                             label {
                                 class: "flex items-center gap-2",
                                 MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 42 },

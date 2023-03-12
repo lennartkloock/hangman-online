@@ -251,6 +251,7 @@ fn Chat<'a>(
                 class: "w-full",
                 prevent_default: "onsubmit",
                 onsubmit: on_letter_submit,
+                // Fixme: input is cleared when new message is received
                 input {
                     class: "input w-full px-2 py-1 rounded-b-lg font-light",
                     r#type: "text",
