@@ -3,16 +3,17 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
-use tracing::info;
+use tracing::{debug, info};
 use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
 mod api;
+mod config;
 mod game;
 mod sender_utils;
 
@@ -26,18 +27,22 @@ async fn main() {
         )
         .init();
 
-    info!("starting hangman server");
+    debug!("loading config");
+    let config = config::load_config();
+
+    info!("starting hangman server on port {}", config.port);
     let app = Router::new()
         .route("/api/game", post(api::create_game))
         .route("/api/game/:code/ws", get(api::game_ws))
         .fallback_service(
-            ServeDir::new("hangman-web/dist")
-                .not_found_service(ServeFile::new("hangman-web/dist/index.html")),
+            ServeDir::new(&config.public_dir)
+                .not_found_service(ServeFile::new(format!("{}/index.html", config.public_dir))),
         )
         .with_state(Arc::new(Mutex::new(GameManager::default())))
         .layer(TraceLayer::new_for_http());
 
-    axum::Server::bind(&"0.0.0.0:8000".parse().unwrap())
+    let addr = SocketAddr::new(config.address, config.port);
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .expect("failed to open server");

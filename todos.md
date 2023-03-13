@@ -1,7 +1,7 @@
 # Todos
 
 ## Planned
-- [ ] Server config
+- [x] Server config
   - configurable port, public dir, wordlists dir
 - [ ] Show the actual hangman
 - [ ] Fix `TODO` comments
