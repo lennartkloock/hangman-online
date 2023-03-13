@@ -60,14 +60,11 @@ impl Word {
 
     pub fn guess(&mut self, s: String) -> GuessResult {
         // TODO: Feels a bit messy
-        let graphemes: Vec<String> = s
-            .graphemes(true)
-            .map(|s| s.to_lowercase().to_string())
-            .collect();
+        let graphemes: Vec<String> = s.graphemes(true).map(|s| s.to_lowercase()).collect();
         if self
             .target
             .iter()
-            .map(|s| s.to_lowercase().to_string())
+            .map(|s| s.to_lowercase())
             .collect::<Vec<String>>()
             == graphemes
         {
@@ -139,16 +136,15 @@ async fn random_word_for_language(
 ) -> Result<String, RandomWordError> {
     let file = fs::read_to_string(wordlist_path_for_language(lang))
         .await
-        .map_err(|e| RandomWordError::Io(e))?;
+        .map_err(RandomWordError::Io)?;
     let n = rand::thread_rng().gen_range(0..limit);
     let mut line = file
         .lines()
         .skip_while(|s| {
             if let Some(id) = s
                 .split_ascii_whitespace()
-                .nth(0)
-                .map(|i| u32::from_str(i).ok())
-                .flatten()
+                .next()
+                .and_then(|i| u32::from_str(i).ok())
             {
                 id <= 100
             } else {

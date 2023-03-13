@@ -1,4 +1,3 @@
-use gloo_utils::errors::JsError;
 use hangman_data::{GameCode, User};
 use thiserror::Error;
 

@@ -21,7 +21,7 @@ mod game_logic;
 mod ws_logic;
 
 #[derive(Debug, Error)]
-enum ConnectionError {
+pub enum ConnectionError {
     #[error("failed to retrieve url: {0}")]
     UrlError(#[from] UrlError),
 
@@ -239,7 +239,7 @@ fn Chat<'a>(
                         };
                         let text = match from {
                             Some(from) => format!("{from}: {content}"),
-                            None => format!("{content}"),
+                            None => content.to_string(),
                         };
                         rsx!(li {
                             class: "{color_class} px-2 py-0.5",
