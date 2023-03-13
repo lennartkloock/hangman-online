@@ -28,10 +28,7 @@ pub enum ChatColor {
 pub enum ServerMessage {
     Init(Game),
     UpdatePlayers(Vec<String>),
-    UpdateGame {
-        word: String,
-        tries_used: u32,
-    },
+    UpdateGame { word: String, tries_used: u32 },
     ChatMessage(ChatMessage),
     UpdateGameState(GameState),
 }

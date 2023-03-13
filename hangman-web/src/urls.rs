@@ -1,6 +1,6 @@
 use gloo_utils::errors::JsError;
-use thiserror::Error;
 use hangman_data::{GameCode, User};
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum UrlError {
@@ -11,19 +11,18 @@ pub enum UrlError {
 }
 
 pub fn game_ws_url(code: &GameCode, user: &User) -> Result<String, UrlError> {
-    match web_sys::window().map(|w| w.location()).map(|l| (l.protocol(), l.host())) {
+    match web_sys::window()
+        .map(|w| w.location())
+        .map(|l| (l.protocol(), l.host()))
+    {
         Some((Ok(protocol), Ok(host))) => {
             let query = form_urlencoded::Serializer::new(String::new())
                 .append_pair("nickname", &user.nickname)
                 .append_pair("token", &format!("{}", user.token))
                 .finish();
-            let protocol = if protocol == "https:" {
-                "wss:"
-            } else {
-                "ws:"
-            };
+            let protocol = if protocol == "https:" { "wss:" } else { "ws:" };
             Ok(format!("{protocol}//{host}/api/game/{code}/ws?{query}"))
-        },
+        }
         Some((_, _)) => Err(UrlError::JsError),
         None => Err(UrlError::NoWindow),
     }

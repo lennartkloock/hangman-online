@@ -2,6 +2,8 @@ use crate::{
     components::{CenterContainer, Error, Form, FormTopBar, MaterialButton, MaterialLinkButton},
     create_user::CreateUser,
     global_state::USER,
+    urls,
+    urls::UrlError,
 };
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
@@ -10,8 +12,6 @@ use fermi::use_read;
 use hangman_data::{CreateGameBody, GameCode, GameLanguage, GameSettings};
 use log::{error, info};
 use thiserror::Error;
-use crate::urls::UrlError;
-use crate::urls;
 
 #[derive(Debug, Error)]
 enum CreateGameError {

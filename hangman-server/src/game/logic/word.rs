@@ -60,7 +60,10 @@ impl Word {
 
     pub fn guess(&mut self, s: String) -> GuessResult {
         // TODO: Feels a bit messy
-        let graphemes: Vec<String> = s.graphemes(true).map(|s| s.to_lowercase().to_string()).collect();
+        let graphemes: Vec<String> = s
+            .graphemes(true)
+            .map(|s| s.to_lowercase().to_string())
+            .collect();
         if self
             .target
             .iter()
@@ -68,7 +71,11 @@ impl Word {
             .collect::<Vec<String>>()
             == graphemes
         {
-            self.current = self.target.iter().map(|s| Character::Guessed(s.clone())).collect();
+            self.current = self
+                .target
+                .iter()
+                .map(|s| Character::Guessed(s.clone()))
+                .collect();
             GuessResult::Solved
         } else if graphemes.len() == 1 {
             if let Some(g) = graphemes.get(0) {

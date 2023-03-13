@@ -1,3 +1,4 @@
+use crate::ChatMessage;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -7,7 +8,6 @@ use std::{
     str::FromStr,
 };
 use thiserror::Error;
-use crate::ChatMessage;
 
 /// Two bytes that represent a game code
 ///

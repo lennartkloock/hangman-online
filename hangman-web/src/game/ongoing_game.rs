@@ -8,14 +8,13 @@ use gloo_utils::errors::JsError;
 use log::error;
 use thiserror::Error;
 
-use hangman_data::{ChatColor, GameState};
-use hangman_data::{ChatMessage, ClientMessage, Game, GameSettings, User};
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, GameState, User};
 
-use crate::urls;
-use crate::urls::UrlError;
 use crate::{
     components::{CenterContainer, MaterialButton, RcError},
     game::{ongoing_game::ws_logic::connect, GameCode},
+    urls,
+    urls::UrlError,
 };
 
 mod game_logic;

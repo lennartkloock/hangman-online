@@ -1,4 +1,4 @@
-use crate::game::ongoing_game::{game_logic, ConnectionError, ClientState};
+use crate::game::ongoing_game::{game_logic, ClientState, ConnectionError};
 use dioxus::prelude::*;
 use futures::{
     stream::{SplitSink, SplitStream},
@@ -34,9 +34,9 @@ pub async fn ws_read(ws_rx: Option<SplitStream<WebSocket>>, state: UseRef<Client
             match msg {
                 Ok(Message::Text(s)) => match serde_json::from_str::<ServerMessage>(&s) {
                     Ok(msg) => game_logic::handle_message(msg, &state),
-                    Err(e) => {
-                        state.set(ClientState::Error(ConnectionError::DeserializeError(e).rc()))
-                    }
+                    Err(e) => state.set(ClientState::Error(
+                        ConnectionError::DeserializeError(e).rc(),
+                    )),
                 },
                 Ok(_) => {
                     state.set(ClientState::Error(

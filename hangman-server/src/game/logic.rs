@@ -1,14 +1,18 @@
 //! Game logic
 
 use crate::{
-    game::{logic::word::Word, ServerGame},
+    game::{
+        logic::word::{GuessResult, Word},
+        ServerGame,
+    },
     sender_utils::{LogSend, SendToAll},
 };
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameState, ServerMessage, User, UserToken};
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, Game, GameState, ServerMessage, User, UserToken,
+};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
-use crate::game::logic::word::GuessResult;
 
 mod word;
 
@@ -35,7 +39,9 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
     let mut players = Players::new();
     let mut chat: Vec<ChatMessage> = vec![];
     let mut tries_used = 0;
-    let mut word = Word::generate(&game.settings.language, 10000).await.unwrap();
+    let mut word = Word::generate(&game.settings.language, 10000)
+        .await
+        .unwrap();
 
     while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
@@ -113,7 +119,7 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                         GuessResult::Miss => {
                             info!("[{code}] {} guessed wrong", user.nickname);
                             tries_used += 1;
-                        },
+                        }
                         GuessResult::Hit => info!("[{code}] {} guessed right", user.nickname),
                         GuessResult::Solved => info!("[{code}] {} solved the word", user.nickname),
                     };
@@ -161,7 +167,10 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                             .map(|(_, s)| s)
                             .send_to_all(ServerMessage::ChatMessage(ChatMessage {
                                 from: None,
-                                content: format!("No tries left! The word was \"{}\"", word.target()),
+                                content: format!(
+                                    "No tries left! The word was \"{}\"",
+                                    word.target()
+                                ),
                                 color: ChatColor::Red,
                             }))
                             .await;

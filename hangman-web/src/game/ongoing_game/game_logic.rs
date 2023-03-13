@@ -10,10 +10,7 @@ pub fn handle_message(msg: ServerMessage, state: &UseRef<ClientState>) {
             info!("updating player list: {players:?}");
             modify_game(s, |game| game.players = players);
         }),
-        ServerMessage::UpdateGame {
-            word,
-            tries_used,
-        } => state.with_mut(|s| {
+        ServerMessage::UpdateGame { word, tries_used } => state.with_mut(|s| {
             info!("new guess: {word}");
             modify_game(s, |game| {
                 game.word = word;
