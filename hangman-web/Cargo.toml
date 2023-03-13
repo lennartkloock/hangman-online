@@ -16,7 +16,7 @@ dioxus-web = "0.3.0"
 
 thiserror = "1.0.38"
 log = "0.4.17"
-console_log = { version = "0.2.0", features = ["color"] }
+console_log = { version = "1.0.0", features = ["color"] }
 
 web-sys = { version = "0.3.61", features = ["Window", "Navigator", "Clipboard", "Storage", "Location"] }
 wasm-bindgen-futures = "0.4.34"
