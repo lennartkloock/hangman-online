@@ -215,12 +215,12 @@ fn Chat<'a>(
     chat: Vec<ChatMessage>,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let value = use_state(cx, || "");
+    let value = use_state(cx, || String::new());
     let on_letter_submit = move |evt: FormEvent| {
         if let Some(msg) = evt.values.get("letter") {
             if !msg.is_empty() {
                 ws_write.send(ClientMessage::ChatMessage(msg.to_string()));
-                value.set("");
+                value.set(String::new());
             }
         }
     };
@@ -253,7 +253,6 @@ fn Chat<'a>(
                 class: "w-full",
                 prevent_default: "onsubmit",
                 onsubmit: on_letter_submit,
-                // Fixme: input is cleared when new message is received
                 input {
                     class: "input w-full px-2 py-1 rounded-b-lg font-light",
                     r#type: "text",
@@ -261,6 +260,7 @@ fn Chat<'a>(
                     placeholder: "Guess something...",
                     disabled: *game_state != GameState::Playing,
                     value: "{value}",
+                    oninput: move |e| value.set(e.data.value.to_string()),
                 }
             }
         }
