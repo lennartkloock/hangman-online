@@ -62,6 +62,8 @@ pub enum ClientState {
 
 #[inline_props]
 pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element<'a> {
+    let router = use_router(cx);
+
     let state = use_ref(cx, || ClientState::Loading);
 
     let (ws_tx, ws_rx) = cx.use_hook(|| match urls::game_ws_url(code, user) {
@@ -119,18 +121,26 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                     class: "grid game-container gap-y-2 w-full",
 
                     // Players
-                    ul {
+                    div {
                         style: "grid-area: players",
-                        class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg flex flex-col gap-2",
-                        players
-                            .iter()
-                            .map(|p| rsx!(
-                                li {
-                                    class: "flex items-center gap-1",
-                                    MaterialIcon { name: "account_circle", color: MaterialIconColor::Light, size: 30 }
-                                    "{p}"
-                                }
-                            ))
+                        class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg flex flex-col",
+                        ul {
+                            class: "flex flex-col gap-2 grow",
+                            players
+                                .iter()
+                                .map(|p| rsx!(
+                                    li {
+                                        class: "flex items-center gap-1",
+                                        MaterialIcon { name: "account_circle", color: MaterialIconColor::Light, size: 30 }
+                                        "{p}"
+                                    }
+                                ))
+                        }
+                        button {
+                            class: "base-button hover:bg-red-700/70 ring-zinc-700/50",
+                            onclick: move |_| router.navigate_to("/"),
+                            "Leave"
+                        }
                     }
 
                     // Word
@@ -159,6 +169,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                     }
                 }
             }
+            Footer { game_state: state.clone() }
         )),
     })
 }
@@ -204,6 +215,26 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
                 span { "{lang}" }
             }
             MaterialButton { name: "settings" }
+        }
+    ))
+}
+
+#[inline_props]
+fn Footer(cx: Scope, game_state: GameState) -> Element {
+    let router = use_router(cx);
+
+    let button = (*game_state != GameState::Playing).then(|| cx.render(rsx!(
+        button {
+            class: "base-button ring-zinc-500 py-1",
+            onclick: move |_| {},
+            "Next Round →"
+        }
+    )));
+
+    cx.render(rsx!(
+        div {
+            class: "absolute bottom-2 right-2 flex items-center gap-1 p-1",
+            button
         }
     ))
 }

@@ -4,14 +4,6 @@ use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::Link;
 
-#[inline_props]
-pub fn Button<'a>(cx: Scope<'a>, children: Element<'a>) -> Element<'a> {
-    cx.render(rsx!(button {
-        class: "button",
-        children
-    }))
-}
-
 #[derive(Props)]
 pub struct LinkButtonProps<'a> {
     to: &'a str,

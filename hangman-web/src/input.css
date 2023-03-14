@@ -11,8 +11,12 @@ html {
     @apply h-screen;
 }
 
+.base-button {
+    @apply font-light text-center bg-zinc-700 px-2 shadow-lg rounded-md transition-all hover:ring;
+}
+
 .button {
-    @apply font-light text-xl text-center bg-zinc-700 shadow-lg rounded-md px-2 py-1 transition-all hover:ring ring-zinc-500;
+    @apply base-button text-xl py-1 ring-zinc-500;
 }
 
 .material-button {
