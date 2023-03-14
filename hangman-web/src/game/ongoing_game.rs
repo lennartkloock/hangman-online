@@ -218,8 +218,10 @@ fn Chat<'a>(
     let value = use_state(cx, || "");
     let on_letter_submit = move |evt: FormEvent| {
         if let Some(msg) = evt.values.get("letter") {
-            ws_write.send(ClientMessage::ChatMessage(msg.to_string()));
-            value.set("");
+            if !msg.is_empty() {
+                ws_write.send(ClientMessage::ChatMessage(msg.to_string()));
+                value.set("");
+            }
         }
     };
 
