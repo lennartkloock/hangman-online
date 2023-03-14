@@ -155,7 +155,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                     div {
                         style: "grid-area: hangman",
                         class: "flex justify-center items-center",
-                        "{tries_used}/10"
+                        "{tries_used}/9"
                     }
                 }
             }
