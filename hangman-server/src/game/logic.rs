@@ -105,8 +105,17 @@ pub async fn game_logic(game: ServerGame, mut rx: mpsc::Receiver<GameMessage>) {
                         .map(|(_, s)| s)
                         .send_to_all(ServerMessage::ChatMessage(message))
                         .await;
+
+                    if players.is_empty() {
+                        break;
+                    } else {
+                        if token == game.owner {
+                            info!("[{code}] the game owner left the game, closing");
+                            break;
+                        }
+                    }
                 } else {
-                    warn!("there was no user in this game with this token");
+                    warn!("[{code}] there was no user in this game with this token");
                 }
             }
             GameMessage::ClientMessage {

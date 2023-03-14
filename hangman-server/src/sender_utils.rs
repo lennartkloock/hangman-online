@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::{stream::FuturesUnordered, StreamExt};
 use tokio::sync::{mpsc, mpsc::error::SendError};
-use tracing::warn;
+use tracing::{debug, warn};
 
 #[async_trait]
 pub trait LogSend<Item> {
@@ -16,7 +16,7 @@ impl<Item: Send> LogSend<Item> for mpsc::Sender<Item> {
 
     async fn log_send(&self, msg: Item) -> Option<Self::E> {
         if let Err(e) = self.send(msg).await {
-            warn!("failed to send message to socket: {e}");
+            debug!("failed to send message to socket: {e}");
             Some(e)
         } else {
             None
@@ -41,7 +41,7 @@ where
                 let msg = msg.clone();
                 async {
                     if let Err(e) = s.send(msg).await {
-                        warn!("failed to send message to socket: {e}");
+                        debug!("failed to send message to socket: {e}");
                     }
                 }
             })

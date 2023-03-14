@@ -82,7 +82,7 @@ async fn handle_socket(
         if let Err(e) = sender
             .send(Message::Close(Some(CloseFrame {
                 code: 4001,
-                reason: Cow::from("the game ended"),
+                reason: Cow::from("the game was closed"),
             })))
             .await
         {

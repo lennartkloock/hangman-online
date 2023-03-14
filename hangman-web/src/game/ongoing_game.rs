@@ -42,7 +42,7 @@ pub enum ConnectionError {
 
     #[error("this game doesn't exist")]
     GameNotFound,
-    #[error("this game closed")]
+    #[error("this game was closed")]
     GameClosed,
 }
 
