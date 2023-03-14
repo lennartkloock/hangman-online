@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::{stream::FuturesUnordered, StreamExt};
 use tokio::sync::{mpsc, mpsc::error::SendError};
-use tracing::{debug, warn};
+use tracing::debug;
 
 #[async_trait]
 pub trait LogSend<Item> {
