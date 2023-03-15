@@ -30,7 +30,7 @@ impl Display for UserToken {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct User {
     pub nickname: String,
     pub token: UserToken,

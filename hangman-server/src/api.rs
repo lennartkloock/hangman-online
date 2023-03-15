@@ -17,12 +17,14 @@ use std::borrow::Cow;
 use tokio::sync::mpsc;
 use tracing::{debug, error, warn};
 use tungstenite::Error;
+use crate::game::GameLogic;
+use crate::game::logic::team::TeamGameLogic;
 
 pub async fn create_game(
     State(game_manager): State<GameManagerState>,
     Json(CreateGameBody { token, settings }): Json<CreateGameBody>,
 ) -> (StatusCode, Json<GameCode>) {
-    let game = ServerGame::new(token, settings);
+    let game = ServerGame::<TeamGameLogic>::new(token, settings).await;
     let code = game.code;
     game_manager.lock().await.add_game(game);
     (StatusCode::CREATED, Json(code))

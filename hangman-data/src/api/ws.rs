@@ -7,7 +7,7 @@ pub enum ClientMessage {
     ChatMessage(String),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ChatMessage {
     pub from: Option<String>,
@@ -21,6 +21,12 @@ pub enum ChatColor {
     Neutral,
     Green,
     Red,
+}
+
+impl Default for ChatColor {
+    fn default() -> Self {
+        ChatColor::Neutral
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

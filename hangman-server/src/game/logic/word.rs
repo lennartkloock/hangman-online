@@ -1,4 +1,4 @@
-use hangman_data::GameLanguage;
+use hangman_data::{ChatColor, GameLanguage};
 use rand::Rng;
 use std::{
     fmt::{Display, Formatter},
@@ -20,6 +20,16 @@ pub enum GuessResult {
     Hit,
     Miss,
     Solved,
+}
+
+impl Into<ChatColor> for GuessResult {
+    fn into(self) -> ChatColor {
+        match self {
+            GuessResult::Hit => ChatColor::Green,
+            GuessResult::Miss => ChatColor::Red,
+            GuessResult::Solved => ChatColor::Green,
+        }
+    }
 }
 
 #[derive(Clone)]
