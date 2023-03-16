@@ -89,8 +89,14 @@ async fn handle_socket(
             })))
             .await
         {
-            // Client most probably already closed the connection
-            debug!("game ended but failed to send close frame to player socket: {e}");
+            let b = e
+                .into_inner()
+                .downcast::<Error>()
+                .expect("failed to downcast axum error to tungstenite error");
+            if !matches!(*b, Error::ConnectionClosed) {
+                // connection wasn't closed normally
+                warn!("game ended but failed to send close frame to player socket: {b}");
+            }
         }
     });
 
