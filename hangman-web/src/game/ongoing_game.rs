@@ -1,6 +1,6 @@
 use crate::{
     components::{CenterContainer, MaterialButton, RcError},
-    game::{ongoing_game::ws_logic::connect, GameCode},
+    game::{ongoing_game::{hangman::Hangman, ws_logic::connect}, GameCode},
     urls,
     urls::UrlError,
 };
@@ -16,6 +16,7 @@ use thiserror::Error;
 
 mod game_logic;
 mod ws_logic;
+mod hangman;
 
 #[derive(Debug, Error)]
 pub enum ConnectionError {
@@ -159,11 +160,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                     }
 
                     // Hangman
-                    div {
-                        style: "grid-area: hangman",
-                        class: "flex justify-center items-center",
-                        "{tries_used}/9"
-                    }
+                    Hangman { tries_used: *tries_used }
                 }
             }
             Footer { game_state: state.clone(), ws_write: ws_write }
