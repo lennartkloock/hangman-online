@@ -1,6 +1,5 @@
 use async_trait::async_trait;
-use hangman_data::{ClientMessage, GameBuilder, GameCode, GameSettings, ServerMessage, User, UserToken};
-pub use logic::GameMessage;
+use hangman_data::{ClientMessage, GameCode, GameSettings, ServerMessage, User, UserToken};
 use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
@@ -8,8 +7,8 @@ use std::{
 };
 use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing::{debug, info, log::warn};
-
-use crate::sender_utils::{LogSend, SendToAll};
+use crate::game::logic::GameMessage;
+use crate::sender_utils::SendToAll;
 
 pub mod logic;
 
@@ -41,18 +40,14 @@ impl GameManager {
 
 #[async_trait]
 pub trait GameLogic {
-    async fn new(settings: &GameSettings, players: Arc<RwLock<Players>>) -> Self;
+    async fn new(settings: GameSettings, players: Arc<RwLock<Players>>) -> Self;
     async fn handle_message(
         &mut self,
         code: GameCode,
         user: (&User, mpsc::Sender<ServerMessage>),
         msg: ClientMessage,
     );
-    async fn on_user_join(
-        &mut self,
-        user: (&User, mpsc::Sender<ServerMessage>),
-        init_game: &mut GameBuilder,
-    );
+    async fn on_user_join(&mut self, user: (&User, mpsc::Sender<ServerMessage>));
     async fn on_user_leave(&mut self, user: (&User, mpsc::Sender<ServerMessage>));
 }
 
@@ -90,7 +85,6 @@ impl DerefMut for Players {
 #[derive(Debug)]
 pub struct ServerGame<L: GameLogic> {
     pub code: GameCode,
-    pub settings: GameSettings,
     pub owner: UserToken,
     pub players: Arc<RwLock<Players>>,
     pub logic: L,
@@ -102,8 +96,7 @@ impl<L: GameLogic> ServerGame<L> {
         Self {
             code: GameCode::random(),
             owner,
-            logic: L::new(&settings, Arc::clone(&players)).await,
-            settings,
+            logic: L::new(settings, Arc::clone(&players)).await,
             players,
         }
     }
@@ -132,20 +125,9 @@ impl<L: GameLogic> ServerGame<L> {
                         .send_to_all(ServerMessage::UpdatePlayers(player_names.clone()))
                         .await;
 
-                    let mut init_game = GameBuilder::default();
-                    init_game
-                        .settings(self.settings.clone())
-                        .players(player_names);
                     self.logic
-                        .on_user_join((&user, sender.clone()), &mut init_game)
+                        .on_user_join((&user, sender.clone()))
                         .await;
-
-                    match init_game.build() {
-                        Ok(g) => {
-                            sender.log_send(ServerMessage::Init(g)).await;
-                        },
-                        Err(e) => warn!("failed to build game for init message: {e}"),
-                    }
                 }
                 GameMessage::Leave(token) => {
                     let mut lock = self.players.write().await;

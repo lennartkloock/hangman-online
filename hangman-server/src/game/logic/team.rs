@@ -1,18 +1,22 @@
+use std::sync::Arc;
+use async_trait::async_trait;
+use tokio::sync::{mpsc, RwLock};
+use tracing::info;
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState,
+    ServerMessage, User,
+};
 use crate::{
     game::{
         logic::word::{GuessResult, Word},
         GameLogic, Players,
     },
-    sender_utils::SendToAll,
+    sender_utils::{LogSend, SendToAll},
 };
-use async_trait::async_trait;
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, GameBuilder, GameCode, GameSettings, GameState, ServerMessage, User};
-use std::sync::Arc;
-use tokio::sync::{mpsc, RwLock};
-use tracing::info;
 
 pub struct TeamGameLogic {
     players: Arc<RwLock<Players>>,
+    settings: GameSettings,
     state: GameState,
     chat: Vec<ChatMessage>,
     tries_used: u32,
@@ -33,10 +37,11 @@ impl TeamGameLogic {
 
 #[async_trait]
 impl GameLogic for TeamGameLogic {
-    async fn new(settings: &GameSettings, players: Arc<RwLock<Players>>) -> Self {
+    async fn new(settings: GameSettings, players: Arc<RwLock<Players>>) -> Self {
         let word = Word::generate(&settings.language, 10000).await.unwrap();
         Self {
             players,
+            settings,
             state: GameState::Playing,
             chat: vec![],
             tries_used: 0,
@@ -120,25 +125,27 @@ impl GameLogic for TeamGameLogic {
         }
     }
 
-    async fn on_user_join(
-        &mut self,
-        user: (&User, mpsc::Sender<ServerMessage>),
-        init_game: &mut GameBuilder,
-    ) {
-        init_game.state(self.state.clone())
-            .chat(self.chat.clone())
-            .tries_used(self.tries_used)
-            .word(self.word.word());
+    async fn on_user_join(&mut self, (user, sender): (&User, mpsc::Sender<ServerMessage>)) {
+        sender
+            .log_send(ServerMessage::Init(Game {
+                settings: self.settings.clone(),
+                state: self.state.clone(),
+                players: self.players.read().await.player_names(),
+                chat: self.chat.clone(),
+                tries_used: self.tries_used,
+                word: self.word.word(),
+            }))
+            .await;
         self.send_chat_message(ChatMessage {
-            content: format!("→ {} joined the game", user.0.nickname),
+            content: format!("→ {} joined the game", user.nickname),
             ..Default::default()
         })
         .await;
     }
 
-    async fn on_user_leave(&mut self, user: (&User, mpsc::Sender<ServerMessage>)) {
+    async fn on_user_leave(&mut self, (user, _): (&User, mpsc::Sender<ServerMessage>)) {
         self.send_chat_message(ChatMessage {
-            content: format!("← {} left the game", user.0.nickname),
+            content: format!("← {} left the game", user.nickname),
             ..Default::default()
         })
         .await;

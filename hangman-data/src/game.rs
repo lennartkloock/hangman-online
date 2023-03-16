@@ -7,7 +7,6 @@ use std::{
     num::ParseIntError,
     str::FromStr,
 };
-use derive_builder::Builder;
 use thiserror::Error;
 
 /// Two bytes that represent a game code
@@ -99,7 +98,7 @@ pub enum GameState {
     OutOfTries,
 }
 
-#[derive(Builder, Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Game {
     pub settings: GameSettings,
     pub state: GameState,
