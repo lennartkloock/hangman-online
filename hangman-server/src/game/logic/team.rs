@@ -35,7 +35,9 @@ impl TeamGameLogic {
     }
 
     async fn regenerate_word(&mut self) {
-        self.word = Word::generate(&self.settings.language, 10000).await.unwrap();
+        self.word = Word::generate(&self.settings.language, 10000)
+            .await
+            .unwrap();
     }
 }
 
@@ -146,13 +148,15 @@ impl GameLogic for TeamGameLogic {
                 self.regenerate_word().await;
                 self.players
                     .read()
-                    .await.player_txs()
+                    .await
+                    .player_txs()
                     .send_to_all(ServerMessage::Init(self.to_game().await))
                     .await;
                 self.send_chat_message(ChatMessage {
                     content: format!("{} started a new round", user.nickname),
                     ..Default::default()
-                }).await;
+                })
+                .await;
             }
         }
     }

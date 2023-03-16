@@ -217,7 +217,11 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 }
 
 #[inline_props]
-fn Footer<'a>(cx: Scope<'a>, game_state: GameState, ws_write: &'a Coroutine<ClientMessage>) -> Element<'a> {
+fn Footer<'a>(
+    cx: Scope<'a>,
+    game_state: GameState,
+    ws_write: &'a Coroutine<ClientMessage>,
+) -> Element<'a> {
     let router = use_router(cx);
 
     let button = (*game_state != GameState::Playing).then(|| {
