@@ -1,7 +1,5 @@
 use async_trait::async_trait;
-use hangman_data::{
-    ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, User, UserToken,
-};
+use hangman_data::{ClientMessage, GameBuilder, GameCode, GameSettings, ServerMessage, User, UserToken};
 pub use logic::GameMessage;
 use std::{
     collections::HashMap,
@@ -54,7 +52,7 @@ pub trait GameLogic {
     async fn on_user_join(
         &mut self,
         user: (&User, mpsc::Sender<ServerMessage>),
-        init_game: &mut Game,
+        init_game: &mut GameBuilder,
     );
     async fn on_user_leave(&mut self, user: (&User, mpsc::Sender<ServerMessage>));
 }
@@ -135,20 +133,20 @@ impl<L: GameLogic> ServerGame<L> {
                         .send_to_all(ServerMessage::UpdatePlayers(player_names.clone()))
                         .await;
 
-                    // TODO: Needs improvement
-                    let mut init_game = Game {
-                        settings: self.settings.clone(),
-                        players: player_names,
-
-                        state: GameState::Playing,
-                        chat: vec![],
-                        tries_used: 0,
-                        word: String::new(),
-                    };
+                    let mut init_game = GameBuilder::default();
+                    init_game
+                        .settings(self.settings.clone())
+                        .players(player_names);
                     self.logic
                         .on_user_join((&user, sender.clone()), &mut init_game)
                         .await;
-                    sender.log_send(ServerMessage::Init(init_game)).await;
+
+                    match init_game.build() {
+                        Ok(g) => {
+                            sender.log_send(ServerMessage::Init(g)).await;
+                        },
+                        Err(e) => warn!("failed to build game for init message: {e}"),
+                    }
                 }
                 GameMessage::Leave(token) => {
                     let mut lock = self.players.write().await;

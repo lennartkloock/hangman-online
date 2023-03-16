@@ -6,10 +6,7 @@ use crate::{
     sender_utils::SendToAll,
 };
 use async_trait::async_trait;
-use hangman_data::{
-    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
-    User,
-};
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, GameBuilder, GameCode, GameSettings, GameState, ServerMessage, User};
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 use tracing::info;
@@ -126,13 +123,12 @@ impl GameLogic for TeamGameLogic {
     async fn on_user_join(
         &mut self,
         user: (&User, mpsc::Sender<ServerMessage>),
-        init_game: &mut Game,
+        init_game: &mut GameBuilder,
     ) {
-        // TODO: Needs improvement
-        init_game.state = self.state.clone();
-        init_game.chat = self.chat.clone();
-        init_game.tries_used = self.tries_used;
-        init_game.word = self.word.word();
+        init_game.state(self.state.clone())
+            .chat(self.chat.clone())
+            .tries_used(self.tries_used)
+            .word(self.word.word());
         self.send_chat_message(ChatMessage {
             content: format!("→ {} joined the game", user.0.nickname),
             ..Default::default()
