@@ -138,12 +138,11 @@ impl<L: GameLogic> ServerGame<L> {
                         self.logic.on_user_leave((&user, sender)).await;
 
                         if lock.is_empty() {
+                            info!("[{}] all players left the game, closing", self.code);
                             break;
-                        } else {
-                            if token == self.owner {
-                                info!("[{}] the game owner left the game, closing", self.code);
-                                break;
-                            }
+                        } else if token == self.owner {
+                            info!("[{}] the game owner left the game, closing", self.code);
+                            break;
                         }
                     } else {
                         warn!(

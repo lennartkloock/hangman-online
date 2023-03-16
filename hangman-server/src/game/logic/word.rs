@@ -22,9 +22,9 @@ pub enum GuessResult {
     Solved,
 }
 
-impl Into<ChatColor> for GuessResult {
-    fn into(self) -> ChatColor {
-        match self {
+impl From<GuessResult> for ChatColor {
+    fn from(value: GuessResult) -> Self {
+        match value {
             GuessResult::Hit => ChatColor::Green,
             GuessResult::Miss => ChatColor::Red,
             GuessResult::Solved => ChatColor::Green,

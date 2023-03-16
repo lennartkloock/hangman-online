@@ -222,8 +222,6 @@ fn Footer<'a>(
     game_state: GameState,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let router = use_router(cx);
-
     let button = (*game_state != GameState::Playing).then(|| {
         cx.render(rsx!(
             button {
@@ -247,7 +245,7 @@ fn Chat<'a>(
     chat: Vec<ChatMessage>,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let value = use_state(cx, || String::new());
+    let value = use_state(cx, String::new);
     let on_letter_submit = move |evt: FormEvent| {
         if let Some(msg) = evt.values.get("letter") {
             if !msg.is_empty() {
