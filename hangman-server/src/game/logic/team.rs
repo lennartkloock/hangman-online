@@ -141,7 +141,7 @@ impl GameLogic for TeamGameLogic {
             }
             ClientMessage::NextRound => {
                 self.state = GameState::Playing;
-                self.chat = vec![];
+                self.chat = self.chat.into_iter().filter(|m| m.from.is_none()).collect();
                 self.tries_used = 0;
                 self.regenerate_word().await;
                 self.players
