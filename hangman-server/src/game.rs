@@ -1,12 +1,10 @@
-use std::{collections::HashMap, future::Future, sync::Arc};
-
+use std::{collections::HashMap, sync::Arc};
+use std::ops::{Deref, DerefMut};
 use async_trait::async_trait;
-use futures::FutureExt;
 use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info, log::warn};
-
 use hangman_data::{
-    ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, User,
+    ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, User,
     UserToken,
 };
 pub use logic::GameMessage;
@@ -23,14 +21,17 @@ pub struct GameManager {
 }
 
 impl GameManager {
-    pub fn add_game<L: GameLogic>(&mut self, mut game: ServerGame<L>) {
+    pub fn add_game<L: GameLogic + Send + 'static>(&mut self, game: ServerGame<L>) {
         info!("new game: {}", game.code);
         let code = game.code;
+        // TODO: Why not unbound channel?
         let (tx, rx) = mpsc::channel(1);
-        tokio::spawn(game.game_loop(rx).then(|_| async {
-            debug!("[{code}] game loop finished, removing game");
-            self.games.remove(&code);
-        }));
+        tokio::spawn(game.game_loop(rx)
+            // .then(|_| async {
+            //     debug!("[{code}] game loop finished, removing game");
+            //     self.games.remove(&code);
+            // })
+        );
         self.games.insert(code, tx);
     }
 
@@ -41,14 +42,13 @@ impl GameManager {
 
 #[async_trait]
 pub trait GameLogic {
-    async fn new(settings: &GameSettings) -> Self;
+    async fn new(settings: &GameSettings, players: Arc<Mutex<Players>>) -> Self;
     async fn handle_message(
         &mut self,
         code: GameCode,
         user: (&User, mpsc::Sender<ServerMessage>),
         msg: ClientMessage,
     );
-    // async fn handle_message(&mut self, game: &ServerGame<Self>, user: (&User, mpsc::Sender<ServerMessage>), msg: ClientMessage);
     async fn on_user_join(
         &mut self,
         user: (&User, mpsc::Sender<ServerMessage>),
@@ -58,22 +58,57 @@ pub trait GameLogic {
 }
 
 #[derive(Debug)]
+pub struct Players(HashMap<UserToken, (User, mpsc::Sender<ServerMessage>)>);
+
+impl Players {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn player_names(&self) -> Vec<String> {
+        self.0
+            .values()
+            .map(|(u, _)| u.nickname.clone())
+            .collect()
+    }
+
+    pub fn player_txs(&self) -> impl Iterator<Item = &mpsc::Sender<ServerMessage>> {
+        self.0.iter().map(|(_, (_, s))| s)
+    }
+}
+
+impl Deref for Players {
+    type Target = HashMap<UserToken, (User, mpsc::Sender<ServerMessage>)>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Players {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[derive(Debug)]
 pub struct ServerGame<L: GameLogic> {
     pub code: GameCode,
     pub settings: GameSettings,
     pub owner: UserToken,
-    pub players: HashMap<UserToken, (User, mpsc::Sender<ServerMessage>)>,
+    pub players: Arc<Mutex<Players>>,
     pub logic: L,
 }
 
 impl<L: GameLogic> ServerGame<L> {
     pub async fn new(owner: UserToken, settings: GameSettings) -> Self {
+        let players = Arc::new(Mutex::new(Players::new()));
         Self {
             code: GameCode::random(),
             owner,
-            players: HashMap::new(),
-            logic: L::new(&settings).await,
+            logic: L::new(&settings, Arc::clone(&players)).await,
             settings,
+            players,
         }
     }
 
@@ -85,19 +120,26 @@ impl<L: GameLogic> ServerGame<L> {
                     info!("[{}] {user:?} joins the game", self.code);
                     let sender = sender.clone();
                     self.players
+                        .lock()
+                        .await
                         .insert(user.token, (user.clone(), sender.clone()));
+
+                    let player_names = self.players.lock().await.player_names();
+
                     // Send update to all clients
                     self.players
+                        .lock()
+                        .await
                         .iter()
                         .filter(|(t, _)| **t != user.token)
                         .map(|(_, (_, s))| s)
-                        .send_to_all(ServerMessage::UpdatePlayers(self.player_names()))
+                        .send_to_all(ServerMessage::UpdatePlayers(player_names.clone()))
                         .await;
 
                     // TODO: Needs improvement
                     let mut init_game = Game {
                         settings: self.settings.clone(),
-                        players: self.player_names(),
+                        players: player_names,
 
                         state: GameState::Playing,
                         chat: vec![],
@@ -110,16 +152,18 @@ impl<L: GameLogic> ServerGame<L> {
                     sender.log_send(ServerMessage::Init(init_game)).await;
                 }
                 GameMessage::Leave(token) => {
-                    if let Some((user, sender)) = self.players.remove(&token) {
+                    let mut lock = self.players.lock().await;
+                    if let Some((user, sender)) = lock.remove(&token) {
                         info!("[{}] {user:?} left the game", self.code);
                         // Send update to all clients
-                        self.player_txs()
-                            .send_to_all(ServerMessage::UpdatePlayers(self.player_names()))
+                        lock
+                            .player_txs()
+                            .send_to_all(ServerMessage::UpdatePlayers(lock.player_names()))
                             .await;
 
                         self.logic.on_user_leave((&user, sender)).await;
 
-                        if self.players.is_empty() {
+                        if lock.is_empty() {
                             break;
                         } else {
                             if token == self.owner {
@@ -135,7 +179,7 @@ impl<L: GameLogic> ServerGame<L> {
                     }
                 }
                 GameMessage::ClientMessage { message, token } => {
-                    if let Some((user, sender)) = self.players.get(&token) {
+                    if let Some((user, sender)) = self.players.lock().await.get(&token) {
                         self.logic
                             .handle_message(self.code, (user, sender.clone()), message)
                             .await;
@@ -143,16 +187,5 @@ impl<L: GameLogic> ServerGame<L> {
                 }
             }
         }
-    }
-
-    pub fn player_names(&self) -> Vec<String> {
-        self.players
-            .values()
-            .map(|(u, _)| u.nickname.clone())
-            .collect()
-    }
-
-    pub fn player_txs(&self) -> impl Iterator<Item = &mpsc::Sender<ServerMessage>> {
-        self.players.iter().map(|(_, (_, s))| s)
     }
 }

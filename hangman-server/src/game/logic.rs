@@ -1,18 +1,9 @@
 //! Game logic
 
-use crate::{
-    game::{
-        logic::word::{GuessResult, Word},
-        ServerGame,
-    },
-    sender_utils::{LogSend, SendToAll},
-};
 use hangman_data::{
-    ChatColor, ChatMessage, ClientMessage, Game, GameState, ServerMessage, User, UserToken,
+    ClientMessage, ServerMessage, User, UserToken,
 };
-use std::collections::HashMap;
 use tokio::sync::mpsc;
-use tracing::{debug, info, warn};
 
 pub mod team;
 mod word;

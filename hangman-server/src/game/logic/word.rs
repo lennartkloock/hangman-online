@@ -15,7 +15,7 @@ pub struct Word {
     current: Vec<Character>,
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum GuessResult {
     Hit,
     Miss,

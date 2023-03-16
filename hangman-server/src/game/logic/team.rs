@@ -1,26 +1,22 @@
-use std::{collections::HashMap, future::Future};
-
+use std::sync::Arc;
 use async_trait::async_trait;
-use tokio::sync::mpsc;
-use tracing::{
-    debug, info,
-    log::{warn, Level::Debug},
-};
-
+use tokio::sync::{mpsc, Mutex};
+use tracing::info;
 use hangman_data::{
     ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
-    User, UserToken,
+    User
 };
-
 use crate::{
     game::{
         logic::word::{GuessResult, Word},
-        GameLogic, GameMessage, ServerGame,
+        GameLogic
     },
-    sender_utils::{LogSend, SendToAll},
+    sender_utils::SendToAll,
 };
+use crate::game::Players;
 
 pub struct TeamGameLogic {
+    players: Arc<Mutex<Players>>,
     state: GameState,
     chat: Vec<ChatMessage>,
     tries_used: u32,
@@ -30,7 +26,7 @@ pub struct TeamGameLogic {
 impl TeamGameLogic {
     async fn send_chat_message(&mut self, msg: ChatMessage) {
         self.chat.push(msg.clone());
-        self.player_txs()
+        self.players.lock().await.player_txs()
             .send_to_all(ServerMessage::ChatMessage(msg))
             .await;
     }
@@ -38,9 +34,10 @@ impl TeamGameLogic {
 
 #[async_trait]
 impl GameLogic for TeamGameLogic {
-    async fn new(settings: &GameSettings) -> Self {
+    async fn new(settings: &GameSettings, players: Arc<Mutex<Players>>) -> Self {
         let word = Word::generate(&settings.language, 10000).await.unwrap();
         Self {
+            players,
             state: GameState::Playing,
             chat: vec![],
             tries_used: 0,
@@ -70,7 +67,7 @@ impl GameLogic for TeamGameLogic {
                     }
                 };
                 // TODO: Solve send_to_all not available here
-                send_to_all(ServerMessage::UpdateGame {
+                self.players.lock().await.player_txs().send_to_all(ServerMessage::UpdateGame {
                     word: self.word.word(),
                     tries_used: self.tries_used,
                 })
@@ -79,13 +76,13 @@ impl GameLogic for TeamGameLogic {
                 self.send_chat_message(ChatMessage {
                     from: Some(user.nickname.clone()),
                     content: message,
-                    color: guess.into(),
+                    color: guess.clone().into(),
                 })
                 .await;
 
                 if guess == GuessResult::Solved {
                     self.state = GameState::Solved;
-                    send_to_all(ServerMessage::ChatMessage(ChatMessage {
+                    self.players.lock().await.player_txs().send_to_all(ServerMessage::ChatMessage(ChatMessage {
                         from: None,
                         content: "You guessed the word!".to_string(),
                         color: ChatColor::Green,
@@ -93,14 +90,14 @@ impl GameLogic for TeamGameLogic {
                     .await;
                 } else if self.tries_used == 9 {
                     self.state = GameState::OutOfTries;
-                    send_to_all(ServerMessage::ChatMessage(ChatMessage {
+                    self.players.lock().await.player_txs().send_to_all(ServerMessage::ChatMessage(ChatMessage {
                         from: None,
                         content: format!("No tries left! The word was \"{}\"", self.word.target()),
                         color: ChatColor::Red,
                     }))
                     .await;
                 }
-                send_to_all(ServerMessage::UpdateGameState(self.state.clone())).await;
+                self.players.lock().await.player_txs().send_to_all(ServerMessage::UpdateGameState(self.state.clone())).await;
             }
         }
     }
