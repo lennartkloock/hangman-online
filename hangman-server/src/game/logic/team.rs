@@ -11,11 +11,11 @@ use hangman_data::{
     User,
 };
 use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{mpsc, RwLock};
 use tracing::info;
 
 pub struct TeamGameLogic {
-    players: Arc<Mutex<Players>>,
+    players: Arc<RwLock<Players>>,
     state: GameState,
     chat: Vec<ChatMessage>,
     tries_used: u32,
@@ -26,7 +26,7 @@ impl TeamGameLogic {
     async fn send_chat_message(&mut self, msg: ChatMessage) {
         self.chat.push(msg.clone());
         self.players
-            .lock()
+            .read()
             .await
             .player_txs()
             .send_to_all(ServerMessage::ChatMessage(msg))
@@ -36,7 +36,7 @@ impl TeamGameLogic {
 
 #[async_trait]
 impl GameLogic for TeamGameLogic {
-    async fn new(settings: &GameSettings, players: Arc<Mutex<Players>>) -> Self {
+    async fn new(settings: &GameSettings, players: Arc<RwLock<Players>>) -> Self {
         let word = Word::generate(&settings.language, 10000).await.unwrap();
         Self {
             players,
@@ -68,9 +68,8 @@ impl GameLogic for TeamGameLogic {
                         info!("[{}] {} solved the word", code, user.nickname)
                     }
                 };
-                // TODO: Solve send_to_all not available here
                 self.players
-                    .lock()
+                    .read()
                     .await
                     .player_txs()
                     .send_to_all(ServerMessage::UpdateGame {
@@ -89,7 +88,7 @@ impl GameLogic for TeamGameLogic {
                 if guess == GuessResult::Solved {
                     self.state = GameState::Solved;
                     self.players
-                        .lock()
+                        .read()
                         .await
                         .player_txs()
                         .send_to_all(ServerMessage::ChatMessage(ChatMessage {
@@ -101,7 +100,7 @@ impl GameLogic for TeamGameLogic {
                 } else if self.tries_used == 9 {
                     self.state = GameState::OutOfTries;
                     self.players
-                        .lock()
+                        .read()
                         .await
                         .player_txs()
                         .send_to_all(ServerMessage::ChatMessage(ChatMessage {
@@ -115,7 +114,7 @@ impl GameLogic for TeamGameLogic {
                         .await;
                 }
                 self.players
-                    .lock()
+                    .read()
                     .await
                     .player_txs()
                     .send_to_all(ServerMessage::UpdateGameState(self.state.clone()))

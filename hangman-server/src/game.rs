@@ -8,7 +8,7 @@ use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing::{debug, info, log::warn};
 
 use crate::sender_utils::{LogSend, SendToAll};
@@ -44,7 +44,7 @@ impl GameManager {
 
 #[async_trait]
 pub trait GameLogic {
-    async fn new(settings: &GameSettings, players: Arc<Mutex<Players>>) -> Self;
+    async fn new(settings: &GameSettings, players: Arc<RwLock<Players>>) -> Self;
     async fn handle_message(
         &mut self,
         code: GameCode,
@@ -95,13 +95,13 @@ pub struct ServerGame<L: GameLogic> {
     pub code: GameCode,
     pub settings: GameSettings,
     pub owner: UserToken,
-    pub players: Arc<Mutex<Players>>,
+    pub players: Arc<RwLock<Players>>,
     pub logic: L,
 }
 
 impl<L: GameLogic> ServerGame<L> {
     pub async fn new(owner: UserToken, settings: GameSettings) -> Self {
-        let players = Arc::new(Mutex::new(Players::new()));
+        let players = Arc::new(RwLock::new(Players::new()));
         Self {
             code: GameCode::random(),
             owner,
@@ -119,15 +119,15 @@ impl<L: GameLogic> ServerGame<L> {
                     info!("[{}] {user:?} joins the game", self.code);
                     let sender = sender.clone();
                     self.players
-                        .lock()
+                        .write()
                         .await
                         .insert(user.token, (user.clone(), sender.clone()));
 
-                    let player_names = self.players.lock().await.player_names();
+                    let player_names = self.players.read().await.player_names();
 
                     // Send update to all clients
                     self.players
-                        .lock()
+                        .read()
                         .await
                         .iter()
                         .filter(|(t, _)| **t != user.token)
@@ -151,7 +151,7 @@ impl<L: GameLogic> ServerGame<L> {
                     sender.log_send(ServerMessage::Init(init_game)).await;
                 }
                 GameMessage::Leave(token) => {
-                    let mut lock = self.players.lock().await;
+                    let mut lock = self.players.write().await;
                     if let Some((user, sender)) = lock.remove(&token) {
                         info!("[{}] {user:?} left the game", self.code);
                         // Send update to all clients
@@ -177,7 +177,7 @@ impl<L: GameLogic> ServerGame<L> {
                     }
                 }
                 GameMessage::ClientMessage { message, token } => {
-                    if let Some((user, sender)) = self.players.lock().await.get(&token) {
+                    if let Some((user, sender)) = self.players.read().await.get(&token) {
                         self.logic
                             .handle_message(self.code, (user, sender.clone()), message)
                             .await;
