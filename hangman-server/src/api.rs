@@ -1,5 +1,5 @@
 use crate::{
-    game::{GameManagerState, GameMessage, ServerGame},
+    game::{logic::team::TeamGameLogic, GameManagerState, GameMessage, ServerGame},
     sender_utils::LogSend,
 };
 use axum::{
@@ -17,7 +17,6 @@ use std::borrow::Cow;
 use tokio::sync::mpsc;
 use tracing::{debug, error, warn};
 use tungstenite::Error;
-use crate::game::logic::team::TeamGameLogic;
 
 pub async fn create_game(
     State(game_manager): State<GameManagerState>,

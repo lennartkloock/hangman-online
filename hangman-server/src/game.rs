@@ -1,13 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
-use std::ops::{Deref, DerefMut};
 use async_trait::async_trait;
-use tokio::sync::{mpsc, Mutex};
-use tracing::{debug, info, log::warn};
 use hangman_data::{
-    ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, User,
-    UserToken,
+    ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, User, UserToken,
 };
 pub use logic::GameMessage;
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
+use tokio::sync::{mpsc, Mutex};
+use tracing::{debug, info, log::warn};
 
 use crate::sender_utils::{LogSend, SendToAll};
 
@@ -26,11 +28,11 @@ impl GameManager {
         let code = game.code;
         // TODO: Why not unbound channel?
         let (tx, rx) = mpsc::channel(1);
-        tokio::spawn(game.game_loop(rx)
-            // .then(|_| async {
-            //     debug!("[{code}] game loop finished, removing game");
-            //     self.games.remove(&code);
-            // })
+        tokio::spawn(
+            game.game_loop(rx), // .then(|_| async {
+                                //     debug!("[{code}] game loop finished, removing game");
+                                //     self.games.remove(&code);
+                                // })
         );
         self.games.insert(code, tx);
     }
@@ -66,10 +68,7 @@ impl Players {
     }
 
     pub fn player_names(&self) -> Vec<String> {
-        self.0
-            .values()
-            .map(|(u, _)| u.nickname.clone())
-            .collect()
+        self.0.values().map(|(u, _)| u.nickname.clone()).collect()
     }
 
     pub fn player_txs(&self) -> impl Iterator<Item = &mpsc::Sender<ServerMessage>> {
@@ -156,8 +155,7 @@ impl<L: GameLogic> ServerGame<L> {
                     if let Some((user, sender)) = lock.remove(&token) {
                         info!("[{}] {user:?} left the game", self.code);
                         // Send update to all clients
-                        lock
-                            .player_txs()
+                        lock.player_txs()
                             .send_to_all(ServerMessage::UpdatePlayers(lock.player_names()))
                             .await;
 

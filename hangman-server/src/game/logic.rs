@@ -1,8 +1,6 @@
 //! Game logic
 
-use hangman_data::{
-    ClientMessage, ServerMessage, User, UserToken,
-};
+use hangman_data::{ClientMessage, ServerMessage, User, UserToken};
 use tokio::sync::mpsc;
 
 pub mod team;

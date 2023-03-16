@@ -1,19 +1,18 @@
-use std::sync::Arc;
-use async_trait::async_trait;
-use tokio::sync::{mpsc, Mutex};
-use tracing::info;
-use hangman_data::{
-    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
-    User
-};
 use crate::{
     game::{
         logic::word::{GuessResult, Word},
-        GameLogic
+        GameLogic, Players,
     },
     sender_utils::SendToAll,
 };
-use crate::game::Players;
+use async_trait::async_trait;
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
+    User,
+};
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex};
+use tracing::info;
 
 pub struct TeamGameLogic {
     players: Arc<Mutex<Players>>,
@@ -26,7 +25,10 @@ pub struct TeamGameLogic {
 impl TeamGameLogic {
     async fn send_chat_message(&mut self, msg: ChatMessage) {
         self.chat.push(msg.clone());
-        self.players.lock().await.player_txs()
+        self.players
+            .lock()
+            .await
+            .player_txs()
             .send_to_all(ServerMessage::ChatMessage(msg))
             .await;
     }
@@ -67,11 +69,15 @@ impl GameLogic for TeamGameLogic {
                     }
                 };
                 // TODO: Solve send_to_all not available here
-                self.players.lock().await.player_txs().send_to_all(ServerMessage::UpdateGame {
-                    word: self.word.word(),
-                    tries_used: self.tries_used,
-                })
-                .await;
+                self.players
+                    .lock()
+                    .await
+                    .player_txs()
+                    .send_to_all(ServerMessage::UpdateGame {
+                        word: self.word.word(),
+                        tries_used: self.tries_used,
+                    })
+                    .await;
 
                 self.send_chat_message(ChatMessage {
                     from: Some(user.nickname.clone()),
@@ -82,22 +88,38 @@ impl GameLogic for TeamGameLogic {
 
                 if guess == GuessResult::Solved {
                     self.state = GameState::Solved;
-                    self.players.lock().await.player_txs().send_to_all(ServerMessage::ChatMessage(ChatMessage {
-                        from: None,
-                        content: "You guessed the word!".to_string(),
-                        color: ChatColor::Green,
-                    }))
-                    .await;
+                    self.players
+                        .lock()
+                        .await
+                        .player_txs()
+                        .send_to_all(ServerMessage::ChatMessage(ChatMessage {
+                            from: None,
+                            content: "You guessed the word!".to_string(),
+                            color: ChatColor::Green,
+                        }))
+                        .await;
                 } else if self.tries_used == 9 {
                     self.state = GameState::OutOfTries;
-                    self.players.lock().await.player_txs().send_to_all(ServerMessage::ChatMessage(ChatMessage {
-                        from: None,
-                        content: format!("No tries left! The word was \"{}\"", self.word.target()),
-                        color: ChatColor::Red,
-                    }))
-                    .await;
+                    self.players
+                        .lock()
+                        .await
+                        .player_txs()
+                        .send_to_all(ServerMessage::ChatMessage(ChatMessage {
+                            from: None,
+                            content: format!(
+                                "No tries left! The word was \"{}\"",
+                                self.word.target()
+                            ),
+                            color: ChatColor::Red,
+                        }))
+                        .await;
                 }
-                self.players.lock().await.player_txs().send_to_all(ServerMessage::UpdateGameState(self.state.clone())).await;
+                self.players
+                    .lock()
+                    .await
+                    .player_txs()
+                    .send_to_all(ServerMessage::UpdateGameState(self.state.clone()))
+                    .await;
             }
         }
     }
