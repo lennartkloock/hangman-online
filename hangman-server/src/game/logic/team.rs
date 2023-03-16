@@ -112,17 +112,16 @@ impl GameLogic for TeamGameLogic {
                         content: "You guessed the word!".to_string(),
                         color: ChatColor::Green,
                         ..Default::default()
-                    }).await;
+                    })
+                    .await;
                 } else if self.tries_used == 9 {
                     self.state = GameState::OutOfTries;
                     self.send_chat_message(ChatMessage {
-                        content: format!(
-                            "No tries left! The word was \"{}\"",
-                            self.word.target()
-                        ),
+                        content: format!("No tries left! The word was \"{}\"", self.word.target()),
                         color: ChatColor::Red,
                         ..Default::default()
-                    }).await;
+                    })
+                    .await;
                 }
                 self.players
                     .read()
