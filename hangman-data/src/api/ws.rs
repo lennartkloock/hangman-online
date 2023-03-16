@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]
 pub enum ClientMessage {
     ChatMessage(String),
+    NextRound,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

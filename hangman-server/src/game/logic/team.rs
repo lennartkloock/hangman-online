@@ -33,6 +33,23 @@ impl TeamGameLogic {
             .send_to_all(ServerMessage::ChatMessage(msg))
             .await;
     }
+
+    async fn regenerate_word(&mut self) {
+        self.word = Word::generate(&self.settings.language, 10000).await.unwrap();
+    }
+}
+
+impl TeamGameLogic {
+    async fn to_game(&self) -> Game {
+        Game {
+            settings: self.settings.clone(),
+            state: self.state.clone(),
+            players: self.players.read().await.player_names(),
+            chat: self.chat.clone(),
+            tries_used: self.tries_used,
+            word: self.word.word(),
+        }
+    }
 }
 
 #[async_trait]
@@ -122,19 +139,27 @@ impl GameLogic for TeamGameLogic {
                     .send_to_all(ServerMessage::UpdateGameState(self.state.clone()))
                     .await;
             }
+            ClientMessage::NextRound => {
+                self.state = GameState::Playing;
+                self.chat = vec![];
+                self.tries_used = 0;
+                self.regenerate_word().await;
+                self.players
+                    .read()
+                    .await.player_txs()
+                    .send_to_all(ServerMessage::Init(self.to_game().await))
+                    .await;
+                self.send_chat_message(ChatMessage {
+                    content: format!("{} started a new round", user.nickname),
+                    ..Default::default()
+                }).await;
+            }
         }
     }
 
     async fn on_user_join(&mut self, (user, sender): (&User, mpsc::Sender<ServerMessage>)) {
         sender
-            .log_send(ServerMessage::Init(Game {
-                settings: self.settings.clone(),
-                state: self.state.clone(),
-                players: self.players.read().await.player_names(),
-                chat: self.chat.clone(),
-                tries_used: self.tries_used,
-                word: self.word.word(),
-            }))
+            .log_send(ServerMessage::Init(self.to_game().await))
             .await;
         self.send_chat_message(ChatMessage {
             content: format!("→ {} joined the game", user.nickname),

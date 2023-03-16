@@ -166,7 +166,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                     }
                 }
             }
-            Footer { game_state: state.clone() }
+            Footer { game_state: state.clone(), ws_write: ws_write }
         )),
     })
 }
@@ -217,14 +217,14 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 }
 
 #[inline_props]
-fn Footer(cx: Scope, game_state: GameState) -> Element {
+fn Footer<'a>(cx: Scope<'a>, game_state: GameState, ws_write: &'a Coroutine<ClientMessage>) -> Element<'a> {
     let router = use_router(cx);
 
     let button = (*game_state != GameState::Playing).then(|| {
         cx.render(rsx!(
             button {
                 class: "base-button ring-zinc-500 py-1",
-                onclick: move |_| {},
+                onclick: move |_| ws_write.send(ClientMessage::NextRound),
                 "Next Round →"
             }
         ))
