@@ -1,6 +1,9 @@
 use crate::{
     components::{CenterContainer, MaterialButton, RcError},
-    game::{ongoing_game::{hangman::Hangman, ws_logic::connect}, GameCode},
+    game::{
+        ongoing_game::{hangman::Hangman, ws_logic::connect},
+        GameCode,
+    },
     urls,
     urls::UrlError,
 };
@@ -15,8 +18,8 @@ use std::rc::Rc;
 use thiserror::Error;
 
 mod game_logic;
-mod ws_logic;
 mod hangman;
+mod ws_logic;
 
 #[derive(Debug, Error)]
 pub enum ConnectionError {
