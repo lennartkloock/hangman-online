@@ -108,31 +108,21 @@ impl GameLogic for TeamGameLogic {
 
                 if guess == GuessResult::Solved {
                     self.state = GameState::Solved;
-                    self.players
-                        .read()
-                        .await
-                        .player_txs()
-                        .send_to_all(ServerMessage::ChatMessage(ChatMessage {
-                            from: None,
-                            content: "You guessed the word!".to_string(),
-                            color: ChatColor::Green,
-                        }))
-                        .await;
+                    self.send_chat_message(ChatMessage {
+                        content: "You guessed the word!".to_string(),
+                        color: ChatColor::Green,
+                        ..Default::default()
+                    }).await;
                 } else if self.tries_used == 9 {
                     self.state = GameState::OutOfTries;
-                    self.players
-                        .read()
-                        .await
-                        .player_txs()
-                        .send_to_all(ServerMessage::ChatMessage(ChatMessage {
-                            from: None,
-                            content: format!(
-                                "No tries left! The word was \"{}\"",
-                                self.word.target()
-                            ),
-                            color: ChatColor::Red,
-                        }))
-                        .await;
+                    self.send_chat_message(ChatMessage {
+                        content: format!(
+                            "No tries left! The word was \"{}\"",
+                            self.word.target()
+                        ),
+                        color: ChatColor::Red,
+                        ..Default::default()
+                    }).await;
                 }
                 self.players
                     .read()
@@ -143,7 +133,12 @@ impl GameLogic for TeamGameLogic {
             }
             ClientMessage::NextRound => {
                 self.state = GameState::Playing;
-                self.chat = self.chat.into_iter().filter(|m| m.from.is_none()).collect();
+                self.chat = self
+                    .chat
+                    .iter()
+                    .filter(|m| m.from.is_none())
+                    .map(|m| m.clone())
+                    .collect();
                 self.tries_used = 0;
                 self.regenerate_word().await;
                 self.players
