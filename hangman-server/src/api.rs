@@ -65,7 +65,7 @@ async fn handle_socket(
     let nick = user.nickname.clone();
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            debug!("sending {msg:?} to client {}", nick);
+            debug!("sending {msg:?} to {}", nick);
             match serde_json::to_string(&msg) {
                 Ok(t) => {
                     if let Err(e) = sender.send(Message::Text(t)).await {
