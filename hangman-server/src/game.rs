@@ -132,35 +132,33 @@ impl<L: GameLogic> ServerGame<L> {
                     self.logic.on_user_join((&user, sender.clone())).await;
                 }
                 GameMessage::Leave(token) => {
-                    let mut guard = self.players.write().await;
-                    if let Some((user, sender)) = guard.remove(&token) {
-                        drop(guard); // TODO: Better solution?
-                        info!("[{}] {user:?} left the game", self.code);
-                        // Send update to all clients
-                        self.players
-                            .read()
-                            .await
-                            .player_txs()
-                            .send_to_all(ServerMessage::UpdatePlayers(
-                                self.players.read().await.player_names(),
-                            ))
-                            .await;
-
-                        trace!("calling on_user_leave");
-                        self.logic.on_user_leave((&user, sender)).await;
-
-                        if self.players.read().await.is_empty() {
-                            info!("[{}] all players left the game, closing", self.code);
-                            break;
-                        } else if token == self.owner {
-                            info!("[{}] the game owner left the game, closing", self.code);
-                            break;
-                        }
-                    } else {
+                    let Some((user, sender)) = self.players.write().await.remove(&token) else {
                         warn!(
                             "[{}] there was no user in this game with this token",
                             self.code
                         );
+                        return;
+                    };
+                    info!("[{}] {user:?} left the game", self.code);
+                    // Send update to all clients
+                    self.players
+                        .read()
+                        .await
+                        .player_txs()
+                        .send_to_all(ServerMessage::UpdatePlayers(
+                            self.players.read().await.player_names(),
+                        ))
+                        .await;
+
+                    trace!("calling on_user_leave");
+                    self.logic.on_user_leave((&user, sender)).await;
+
+                    if self.players.read().await.is_empty() {
+                        info!("[{}] all players left the game, closing", self.code);
+                        break;
+                    } else if token == self.owner {
+                        info!("[{}] the game owner left the game, closing", self.code);
+                        break;
                     }
                 }
                 GameMessage::ClientMessage { message, token } => {
