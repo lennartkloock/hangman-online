@@ -1,7 +1,7 @@
 use crate::{
     game::{
         logic::{team::TeamGameLogic, GameMessage},
-        GameManagerState, ServerGame,
+        GameManager, ServerGame,
     },
     sender_utils::LogSend,
 };
@@ -22,22 +22,22 @@ use tracing::{debug, error, warn};
 use tungstenite::Error;
 
 pub async fn create_game(
-    State(game_manager): State<GameManagerState>,
+    State(game_manager): State<GameManager>,
     Json(CreateGameBody { token, settings }): Json<CreateGameBody>,
 ) -> (StatusCode, Json<GameCode>) {
     let game = ServerGame::<TeamGameLogic>::new(token, settings).await;
     let code = game.code;
-    game_manager.lock().await.add_game(game);
+    game_manager.add_game(game).await;
     (StatusCode::CREATED, Json(code))
 }
 
 pub async fn game_ws(
-    State(game_manager): State<GameManagerState>,
+    State(game_manager): State<GameManager>,
     Path(code): Path<GameCode>,
     Query(user): Query<User>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    if let Some(game_socket) = game_manager.lock().await.get_game(code) {
+    if let Some(game_socket) = game_manager.get_game(code).await {
         ws.on_upgrade(move |socket| handle_socket(socket, user, code, game_socket))
     } else {
         ws.on_upgrade(move |mut socket| async move {

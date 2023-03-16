@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use futures::{stream::FuturesUnordered, StreamExt};
+use std::fmt::Debug;
 use tokio::sync::{mpsc, mpsc::error::SendError};
 use tracing::debug;
 
@@ -32,10 +33,11 @@ pub trait SendToAll<M> {
 #[async_trait]
 impl<'a, M, I> SendToAll<M> for I
 where
-    M: Clone + Send + 'static,
+    M: Debug + Clone + Send + 'static,
     I: Iterator<Item = &'a mpsc::Sender<M>> + Send,
 {
     async fn send_to_all(self, msg: M) {
+        debug!("sending {msg:?} to all");
         let mut futs: FuturesUnordered<_> = self
             .map(|s| {
                 let msg = msg.clone();

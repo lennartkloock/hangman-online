@@ -1,5 +1,6 @@
 use crate::{game::logic::GameMessage, sender_utils::SendToAll};
 use async_trait::async_trait;
+use futures::FutureExt;
 use hangman_data::{ClientMessage, GameCode, GameSettings, ServerMessage, User, UserToken};
 use std::{
     collections::HashMap,
@@ -7,33 +8,36 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::{mpsc, Mutex, RwLock};
-use tracing::{debug, info, log::warn};
+use tracing::{debug, info, log::warn, trace};
 
 pub mod logic;
 
-pub type GameManagerState = Arc<Mutex<GameManager>>;
-
-#[derive(Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct GameManager {
-    games: HashMap<GameCode, mpsc::Sender<GameMessage>>,
+    games: Arc<Mutex<HashMap<GameCode, mpsc::Sender<GameMessage>>>>,
 }
 
 impl GameManager {
-    pub fn add_game<L: GameLogic + Send + 'static>(&mut self, game: ServerGame<L>) {
+    pub fn new() -> Self {
+        Self {
+            games: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    pub async fn add_game<L: GameLogic + Send + 'static>(&self, game: ServerGame<L>) {
         info!("new game: {}", game.code);
         let code = game.code;
         let (tx, rx) = mpsc::channel(10);
-        tokio::spawn(
-            game.game_loop(rx), // .then(|_| async {
-                                //     debug!("[{code}] game loop finished, removing game");
-                                //     self.games.remove(&code);
-                                // })
-        );
-        self.games.insert(code, tx);
+        let games = Arc::clone(&self.games);
+        tokio::spawn(game.game_loop(rx).then(move |_| async move {
+            debug!("[{code}] game loop finished, removing game");
+            games.lock().await.remove(&code);
+        }));
+        self.games.lock().await.insert(code, tx);
     }
 
-    pub fn get_game(&self, code: GameCode) -> Option<mpsc::Sender<GameMessage>> {
-        self.games.get(&code).map(mpsc::Sender::clone)
+    pub async fn get_game(&self, code: GameCode) -> Option<mpsc::Sender<GameMessage>> {
+        self.games.lock().await.get(&code).map(mpsc::Sender::clone)
     }
 }
 
@@ -124,20 +128,28 @@ impl<L: GameLogic> ServerGame<L> {
                         .send_to_all(ServerMessage::UpdatePlayers(player_names.clone()))
                         .await;
 
+                    trace!("calling on_user_join");
                     self.logic.on_user_join((&user, sender.clone())).await;
                 }
                 GameMessage::Leave(token) => {
-                    let mut lock = self.players.write().await;
-                    if let Some((user, sender)) = lock.remove(&token) {
+                    let mut guard = self.players.write().await;
+                    if let Some((user, sender)) = guard.remove(&token) {
+                        drop(guard); // TODO: Better solution?
                         info!("[{}] {user:?} left the game", self.code);
                         // Send update to all clients
-                        lock.player_txs()
-                            .send_to_all(ServerMessage::UpdatePlayers(lock.player_names()))
+                        self.players
+                            .read()
+                            .await
+                            .player_txs()
+                            .send_to_all(ServerMessage::UpdatePlayers(
+                                self.players.read().await.player_names(),
+                            ))
                             .await;
 
+                        trace!("calling on_user_leave");
                         self.logic.on_user_leave((&user, sender)).await;
 
-                        if lock.is_empty() {
+                        if self.players.read().await.is_empty() {
                             info!("[{}] all players left the game, closing", self.code);
                             break;
                         } else if token == self.owner {
@@ -153,6 +165,7 @@ impl<L: GameLogic> ServerGame<L> {
                 }
                 GameMessage::ClientMessage { message, token } => {
                     if let Some((user, sender)) = self.players.read().await.get(&token) {
+                        trace!("calling handle_message");
                         self.logic
                             .handle_message(self.code, (user, sender.clone()), message)
                             .await;

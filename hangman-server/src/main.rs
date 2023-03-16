@@ -3,8 +3,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use std::{net::SocketAddr, sync::Arc};
-use tokio::sync::Mutex;
+use std::net::SocketAddr;
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
@@ -38,7 +37,7 @@ async fn main() {
             ServeDir::new(&config.public_dir)
                 .not_found_service(ServeFile::new(format!("{}/index.html", config.public_dir))),
         )
-        .with_state(Arc::new(Mutex::new(GameManager::default())))
+        .with_state(GameManager::new())
         .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::new(config.address, config.port);
