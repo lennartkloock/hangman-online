@@ -1,11 +1,3 @@
-use std::sync::Arc;
-use async_trait::async_trait;
-use tokio::sync::{mpsc, RwLock};
-use tracing::info;
-use hangman_data::{
-    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState,
-    ServerMessage, User,
-};
 use crate::{
     game::{
         logic::word::{GuessResult, Word},
@@ -13,6 +5,14 @@ use crate::{
     },
     sender_utils::{LogSend, SendToAll},
 };
+use async_trait::async_trait;
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
+    User,
+};
+use std::sync::Arc;
+use tokio::sync::{mpsc, RwLock};
+use tracing::info;
 
 pub struct TeamGameLogic {
     players: Arc<RwLock<Players>>,

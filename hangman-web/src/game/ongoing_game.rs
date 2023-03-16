@@ -1,21 +1,18 @@
-use std::rc::Rc;
-
-use dioxus::prelude::*;
-use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
-use dioxus_router::use_router;
-use gloo_net::websocket::WebSocketError;
-use gloo_utils::errors::JsError;
-use log::error;
-use thiserror::Error;
-
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, GameState, User};
-
 use crate::{
     components::{CenterContainer, MaterialButton, RcError},
     game::{ongoing_game::ws_logic::connect, GameCode},
     urls,
     urls::UrlError,
 };
+use dioxus::prelude::*;
+use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
+use dioxus_router::use_router;
+use gloo_net::websocket::WebSocketError;
+use gloo_utils::errors::JsError;
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, GameState, User};
+use log::error;
+use std::rc::Rc;
+use thiserror::Error;
 
 mod game_logic;
 mod ws_logic;
@@ -223,20 +220,20 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 fn Footer(cx: Scope, game_state: GameState) -> Element {
     let router = use_router(cx);
 
-    let button = (*game_state != GameState::Playing).then(|| cx.render(rsx!(
-        button {
-            class: "base-button ring-zinc-500 py-1",
-            onclick: move |_| {},
-            "Next Round →"
-        }
-    )));
+    let button = (*game_state != GameState::Playing).then(|| {
+        cx.render(rsx!(
+            button {
+                class: "base-button ring-zinc-500 py-1",
+                onclick: move |_| {},
+                "Next Round →"
+            }
+        ))
+    });
 
-    cx.render(rsx!(
-        div {
-            class: "absolute bottom-2 right-2 flex items-center gap-1 p-1",
-            button
-        }
-    ))
+    cx.render(rsx!(div {
+        class: "absolute bottom-2 right-2 flex items-center gap-1 p-1",
+        button
+    }))
 }
 
 #[inline_props]

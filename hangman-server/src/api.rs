@@ -1,5 +1,8 @@
 use crate::{
-    game::{logic::team::TeamGameLogic, GameManagerState, logic::GameMessage, ServerGame},
+    game::{
+        logic::{team::TeamGameLogic, GameMessage},
+        GameManagerState, ServerGame,
+    },
     sender_utils::LogSend,
 };
 use axum::{

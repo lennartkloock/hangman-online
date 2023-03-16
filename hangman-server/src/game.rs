@@ -1,3 +1,4 @@
+use crate::{game::logic::GameMessage, sender_utils::SendToAll};
 use async_trait::async_trait;
 use hangman_data::{ClientMessage, GameCode, GameSettings, ServerMessage, User, UserToken};
 use std::{
@@ -7,8 +8,6 @@ use std::{
 };
 use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing::{debug, info, log::warn};
-use crate::game::logic::GameMessage;
-use crate::sender_utils::SendToAll;
 
 pub mod logic;
 
@@ -125,9 +124,7 @@ impl<L: GameLogic> ServerGame<L> {
                         .send_to_all(ServerMessage::UpdatePlayers(player_names.clone()))
                         .await;
 
-                    self.logic
-                        .on_user_join((&user, sender.clone()))
-                        .await;
+                    self.logic.on_user_join((&user, sender.clone())).await;
                 }
                 GameMessage::Leave(token) => {
                     let mut lock = self.players.write().await;
