@@ -24,8 +24,7 @@ impl GameManager {
     pub fn add_game<L: GameLogic + Send + 'static>(&mut self, game: ServerGame<L>) {
         info!("new game: {}", game.code);
         let code = game.code;
-        // TODO: Why not unbound channel?
-        let (tx, rx) = mpsc::channel(1);
+        let (tx, rx) = mpsc::channel(10);
         tokio::spawn(
             game.game_loop(rx), // .then(|_| async {
                                 //     debug!("[{code}] game loop finished, removing game");
