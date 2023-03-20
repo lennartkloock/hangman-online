@@ -15,6 +15,7 @@ mod api;
 mod config;
 mod game;
 mod sender_utils;
+mod word_generator;
 
 #[tokio::main]
 async fn main() {

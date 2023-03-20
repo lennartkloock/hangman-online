@@ -48,7 +48,7 @@ impl Display for GameCode {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum GameLanguage {
     English,
@@ -86,9 +86,43 @@ impl Display for GameLanguage {
     }
 }
 
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum Difficulty {
+    Easy,
+    #[default]
+    Medium,
+    Hard,
+    Insane,
+}
+
+impl Difficulty {
+    pub fn all() -> Vec<Self> {
+        vec![
+            Self::Easy,
+            Self::Medium,
+            Self::Hard,
+            Self::Insane,
+        ]
+    }
+}
+
+impl Display for Difficulty {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let lang = match self {
+            Difficulty::Easy => "Easy",
+            Difficulty::Medium => "Medium",
+            Difficulty::Hard => "Hard",
+            Difficulty::Insane => "Insane",
+        };
+        write!(f, "{}", lang)
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GameSettings {
     pub language: GameLanguage,
+    pub difficulty: Difficulty,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
