@@ -39,7 +39,10 @@ impl WordGenerator {
         }
 
         debug!("preprocessing finished");
-        Ok(Self { wordlists_dir: config.wordlists_dir.clone(), limits })
+        Ok(Self {
+            wordlists_dir: config.wordlists_dir.clone(),
+            limits,
+        })
     }
 
     pub async fn generate(
@@ -61,11 +64,11 @@ impl WordGenerator {
                     Difficulty::Insane,
                 ];
                 let n = diffs
-                .iter()
-                .enumerate()
-                .find(|(_, d)| *d == difficulty)
-                .unwrap()
-                .0;
+                    .iter()
+                    .enumerate()
+                    .find(|(_, d)| *d == difficulty)
+                    .unwrap()
+                    .0;
                 let frac = words / diffs.len();
                 (n * frac)..((n + 1) * frac)
             }

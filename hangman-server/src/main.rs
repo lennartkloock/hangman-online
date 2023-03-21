@@ -4,8 +4,8 @@ use axum::{
     Router,
 };
 use hangman_data::GameLanguage;
-use std::net::SocketAddr;
 use once_cell::sync::OnceCell;
+use std::net::SocketAddr;
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
