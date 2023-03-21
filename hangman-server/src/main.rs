@@ -1,9 +1,11 @@
-use crate::game::GameManager;
+use crate::{game::GameManager, word_generator::WordGenerator};
 use axum::{
     routing::{get, post},
     Router,
 };
+use hangman_data::GameLanguage;
 use std::net::SocketAddr;
+use once_cell::sync::OnceCell;
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
@@ -17,6 +19,8 @@ mod game;
 mod sender_utils;
 mod word_generator;
 
+static GENERATOR: OnceCell<WordGenerator> = OnceCell::new();
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
@@ -29,6 +33,14 @@ async fn main() {
 
     debug!("loading config");
     let config = config::load_config();
+
+    GENERATOR
+        .set(
+            WordGenerator::preprocess(&config, &GameLanguage::all())
+                .await
+                .expect("failed to preprocess wordlists"),
+        )
+        .expect("failed to set global state");
 
     info!("starting hangman server on port {}", config.port);
     let app = Router::new()

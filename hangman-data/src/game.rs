@@ -89,6 +89,7 @@ impl Display for GameLanguage {
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum Difficulty {
+    Random,
     Easy,
     #[default]
     Medium,
@@ -99,6 +100,7 @@ pub enum Difficulty {
 impl Difficulty {
     pub fn all() -> Vec<Self> {
         vec![
+            Self::Random,
             Self::Easy,
             Self::Medium,
             Self::Hard,
@@ -110,6 +112,7 @@ impl Difficulty {
 impl Display for Difficulty {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let lang = match self {
+            Difficulty::Random => "Random",
             Difficulty::Easy => "Easy",
             Difficulty::Medium => "Medium",
             Difficulty::Hard => "Hard",

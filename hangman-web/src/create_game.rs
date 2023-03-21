@@ -9,7 +9,7 @@ use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use fermi::use_read;
-use hangman_data::{CreateGameBody, GameCode, GameLanguage, GameSettings};
+use hangman_data::{CreateGameBody, Difficulty, GameCode, GameLanguage, GameSettings};
 use log::{error, info};
 use thiserror::Error;
 
@@ -35,13 +35,13 @@ pub fn CreateGame(cx: Scope) -> Element {
                 CenterContainer {
                     Form {
                         onsubmit: |e: FormEvent| {
-                            if let Some(Ok(language)) = e.data.values.get("language").map(|s| serde_json::from_str::<GameLanguage>(s)) {
+                            if let (Some(Ok(language)), Some(Ok(difficulty))) = (e.data.values.get("language").map(|s| serde_json::from_str::<GameLanguage>(s)), e.data.values.get("difficulty").map(|s| serde_json::from_str::<Difficulty>(s))) {
                                 match urls::http_url_origin() {
                                     Ok(origin) => {
                                         let token = user.token; // Copies token
                                         to_owned![router, client, error]; // Clones states
                                         cx.spawn(async move {
-                                            let body = CreateGameBody { token, settings: GameSettings { language } };
+                                            let body = CreateGameBody { token, settings: GameSettings { language, difficulty } };
                                             match client.post(format!("{origin}/api/game"))
                                                 .json(&body)
                                                 .send()
@@ -75,7 +75,7 @@ pub fn CreateGame(cx: Scope) -> Element {
                             MaterialButton { name: "done" }
                         }
                         div {
-                            class: "p-6",
+                            class: "p-6 flex flex-col gap-1",
                             label {
                                 class: "flex items-center gap-2",
                                 MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 42 },
@@ -86,6 +86,19 @@ pub fn CreateGame(cx: Scope) -> Element {
                                     GameLanguage::all().iter().map(|l| {
                                         let value = serde_json::to_string(&l).expect("failed to serialize language");
                                         rsx!(option { value: "{value}", "{l}" })
+                                    })
+                                }
+                            }
+                            label {
+                                class: "flex items-center gap-2",
+                                MaterialIcon { name: "star", color: MaterialIconColor::Light, size: 42 },
+                                select {
+                                    class: "input p-1 w-full rounded",
+                                    required: true,
+                                    name: "difficulty",
+                                    Difficulty::all().iter().map(|d| {
+                                        let value = serde_json::to_string(&d).expect("failed to serialize difficulty");
+                                        rsx!(option { value: "{value}", "{d}" })
                                     })
                                 }
                             }

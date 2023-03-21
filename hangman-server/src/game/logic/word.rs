@@ -1,13 +1,7 @@
-use hangman_data::{ChatColor, GameLanguage};
-use rand::Rng;
+use hangman_data::ChatColor;
 use std::{
     fmt::{Display, Formatter},
-    path::PathBuf,
-    str::FromStr,
 };
-use thiserror::Error;
-use tokio::{fs, io};
-use tracing::info;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Word {
@@ -48,14 +42,12 @@ impl Display for Character {
 }
 
 impl Word {
-    pub async fn generate(language: &GameLanguage, limit: u32) -> Result<Self, RandomWordError> {
-        let random = random_word_for_language(language, limit).await?;
-        info!("generated random word for {language}: {random}");
-        let target: Vec<String> = random.graphemes(true).map(|s| s.to_string()).collect();
-        Ok(Self {
+    pub fn new(target: String) -> Self {
+        let target: Vec<String> = target.graphemes(true).map(|s| s.to_string()).collect();
+        Self {
             current: vec![Character::Unknown; target.len()],
             target,
-        })
+        }
     }
 
     pub fn target(&self) -> String {
@@ -114,58 +106,4 @@ impl Word {
             GuessResult::Miss
         }
     }
-}
-
-fn wordlist_path_for_language(lang: &GameLanguage) -> PathBuf {
-    let mut path = PathBuf::new();
-    path.push("wordlists");
-    match lang {
-        GameLanguage::English => path.push("eng-com_web-public_2018_1M-words.txt"),
-        GameLanguage::Spanish => path.push("spa_web_2016_1M-words.txt"),
-        GameLanguage::French => path.push("fra_mixed_2009_1M-words.txt"),
-        GameLanguage::German => path.push("deu-de_web_2021_1M-words.txt"),
-        GameLanguage::Russian => path.push("rus-ru_web-public_2019_1M-words.txt"),
-        GameLanguage::Turkish => path.push("tur-tr_web_2019_1M-words.txt"),
-    }
-    path
-}
-
-#[derive(Debug, Error)]
-pub enum RandomWordError {
-    #[error("IO error: {0}")]
-    Io(#[from] io::Error),
-    #[error("limit is too high")]
-    LimitTooHigh,
-    #[error("failed to parse wordlist")]
-    ParseError,
-}
-
-async fn random_word_for_language(
-    lang: &GameLanguage,
-    limit: u32,
-) -> Result<String, RandomWordError> {
-    let file = fs::read_to_string(wordlist_path_for_language(lang))
-        .await
-        .map_err(RandomWordError::Io)?;
-    let n = rand::thread_rng().gen_range(0..limit);
-    let mut line = file
-        .lines()
-        .skip_while(|s| {
-            if let Some(id) = s
-                .split_ascii_whitespace()
-                .next()
-                .and_then(|i| u32::from_str(i).ok())
-            {
-                id <= 100
-            } else {
-                // TODO: Skips word if parse error occurs, but should return error
-                true
-            }
-        })
-        .nth(n as usize)
-        .ok_or(RandomWordError::LimitTooHigh)?
-        .split_ascii_whitespace();
-    line.nth(1)
-        .map(|s| s.to_string())
-        .ok_or(RandomWordError::ParseError)
 }

@@ -4,6 +4,7 @@ use crate::{
         GameLogic, Players,
     },
     sender_utils::{LogSend, SendToAll},
+    GENERATOR,
 };
 use async_trait::async_trait;
 use hangman_data::{
@@ -23,6 +24,17 @@ pub struct TeamGameLogic {
     word: Word,
 }
 
+async fn generate_word(settings: &GameSettings) -> Word {
+    Word::new(
+        GENERATOR
+            .get()
+            .expect("generator not initialized")
+            .generate(&settings.language, &settings.difficulty)
+            .await
+            .expect("failed to generate word"),
+    )
+}
+
 impl TeamGameLogic {
     async fn send_chat_message(&mut self, msg: ChatMessage) {
         self.chat.push(msg.clone());
@@ -34,14 +46,6 @@ impl TeamGameLogic {
             .await;
     }
 
-    async fn regenerate_word(&mut self) {
-        self.word = Word::generate(&self.settings.language, 10000)
-            .await
-            .unwrap();
-    }
-}
-
-impl TeamGameLogic {
     async fn to_game(&self) -> Game {
         Game {
             settings: self.settings.clone(),
@@ -57,14 +61,13 @@ impl TeamGameLogic {
 #[async_trait]
 impl GameLogic for TeamGameLogic {
     async fn new(settings: GameSettings, players: Arc<RwLock<Players>>) -> Self {
-        let word = Word::generate(&settings.language, 10000).await.unwrap();
         Self {
             players,
+            word: generate_word(&settings).await,
             settings,
             state: GameState::Playing,
             chat: vec![],
             tries_used: 0,
-            word,
         }
     }
 
@@ -134,7 +137,7 @@ impl GameLogic for TeamGameLogic {
                 self.state = GameState::Playing;
                 self.chat.retain(|m| m.from.is_none());
                 self.tries_used = 0;
-                self.regenerate_word().await;
+                self.word = generate_word(&self.settings).await;
                 self.players
                     .read()
                     .await
