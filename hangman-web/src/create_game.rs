@@ -35,7 +35,9 @@ pub fn CreateGame(cx: Scope) -> Element {
                 CenterContainer {
                     Form {
                         onsubmit: |e: FormEvent| {
-                            if let (Some(Ok(language)), Some(Ok(difficulty))) = (e.data.values.get("language").map(|s| serde_json::from_str::<GameLanguage>(s)), e.data.values.get("difficulty").map(|s| serde_json::from_str::<Difficulty>(s))) {
+                            let lang = e.data.values.get("language").and_then(|s| serde_json::from_str::<GameLanguage>(s).ok());
+                            let diff = e.data.values.get("difficulty").and_then(|s| serde_json::from_str::<Difficulty>(s).ok());
+                            if let (Some(language), Some(difficulty)) = (lang, diff) {
                                 match urls::http_url_origin() {
                                     Ok(origin) => {
                                         let token = user.token; // Copies token
