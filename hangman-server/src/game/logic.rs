@@ -4,6 +4,7 @@ use hangman_data::{ClientMessage, ServerMessage, User, UserToken};
 use tokio::sync::mpsc;
 
 pub mod team;
+pub mod competitive;
 mod word;
 
 #[derive(Debug)]

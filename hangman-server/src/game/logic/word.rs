@@ -2,6 +2,7 @@ use hangman_data::ChatColor;
 use std::fmt::{Display, Formatter};
 use unicode_segmentation::UnicodeSegmentation;
 
+#[derive(Clone)]
 pub struct Word {
     target: Vec<String>,
     current: Vec<Character>,
