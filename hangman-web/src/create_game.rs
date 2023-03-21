@@ -99,8 +99,9 @@ pub fn CreateGame(cx: Scope) -> Element {
                                     required: true,
                                     name: "difficulty",
                                     Difficulty::all().iter().map(|d| {
+                                        let is_default = *d == Difficulty::default();
                                         let value = serde_json::to_string(&d).expect("failed to serialize difficulty");
-                                        rsx!(option { value: "{value}", "{d}" })
+                                        rsx!(option { value: "{value}", selected: is_default, "{d}" })
                                     })
                                 }
                             }
