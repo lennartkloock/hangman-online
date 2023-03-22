@@ -2,7 +2,7 @@ use crate::{
     game::{
         logic::word::{GuessResult, Word},
     },
-    sender_utils::{LogSend, SendToAll},
+    sender_utils::{LogSend},
     GENERATOR,
 };
 use hangman_data::{
@@ -15,30 +15,52 @@ use std::{
 };
 use tokio::sync::{mpsc, mpsc::Sender, RwLock};
 use tracing::{debug, info, warn};
-use crate::game::logic::GameMessage;
+use crate::game::logic::{GameMessage, Players, ToName};
+
+struct UserState {
+    user: User,
+    state: GameState,
+    tries_used: u32,
+    chat: Vec<ChatMessage>,
+}
+
+impl ToName for UserState {
+    fn to_name(&self) -> &str {
+        &self.user.nickname
+    }
+}
 
 pub async fn game_loop(mut rx: mpsc::Receiver<GameMessage>, code: GameCode, settings: GameSettings, owner: UserToken) {
     // let mut players = Players::new();
+    // let mut global_chat = Vec::new();
     //
     // while let Some(msg) = rx.recv().await {
-    //     debug!("[{}] received {msg:?}", self.code);
+    //     debug!("[{code}] received {msg:?}");
     //     match msg {
     //         GameMessage::Join { user, sender } => {
-    //             info!("[{}] {user:?} joins the game", self.code);
-    //             let sender = sender.clone();
-    //             players.insert(user.token, (user.clone(), sender.clone()));
+    //             info!("[{code}] {user:?} joins the game");
+    //             players.add_player(user.token, sender, UserState {
+    //                 user,
+    //                 state: GameState::Playing,
+    //                 tries_used: 0,
+    //                 chat: vec![],
+    //             });
     //
-    //             let player_names = players.player_names();
-    //
-    //             // Send update to all clients
-    //             players
-    //                 .iter()
-    //                 .filter(|(t, _)| **t != user.token)
-    //                 .map(|(_, (_, s))| s)
-    //                 .send_to_all(ServerMessage::UpdatePlayers(player_names.clone()))
+    //             sender
+    //                 .log_send(ServerMessage::Init(Game {
+    //                     settings: settings.clone(),
+    //                     state: GameState::Playing,
+    //                     players: players.player_names(),
+    //                     chat: global_chat.clone(),
+    //                     tries_used: 0,
+    //                     word: first_word,
+    //                 }))
     //                 .await;
-    //
-    //             // ...
+    //             self.send_global_chat_message(ChatMessage {
+    //                 content: format!("→ {} joined the game", user.nickname),
+    //                 ..Default::default()
+    //             })
+    //             .await;
     //         }
     //         GameMessage::Leave(token) => {
     //             let Some((user, sender)) = players.remove(&token) else {
@@ -51,7 +73,6 @@ pub async fn game_loop(mut rx: mpsc::Receiver<GameMessage>, code: GameCode, sett
     //             info!("[{}] {user:?} left the game", self.code);
     //             // Send update to all clients
     //             players
-    //                 .player_txs()
     //                 .send_to_all(ServerMessage::UpdatePlayers(
     //                     players.player_names(),
     //                 ))
@@ -68,7 +89,7 @@ pub async fn game_loop(mut rx: mpsc::Receiver<GameMessage>, code: GameCode, sett
     //             }
     //         }
     //         GameMessage::ClientMessage { message, token } => {
-    //             if let Some((user, sender)) = players.get(&token) {
+    //             if let Some((_, user_state)) = players.get(&token) {
     //                 // ...
     //             }
     //         }
@@ -77,13 +98,6 @@ pub async fn game_loop(mut rx: mpsc::Receiver<GameMessage>, code: GameCode, sett
     todo!()
 }
 
-// struct UserState {
-//     state: GameState,
-//     tries_used: u32,
-//     chat: Vec<ChatMessage>,
-//     words: VecDeque<Word>,
-// }
-//
 // pub struct CompetitiveGameLogic {
 //     players: Arc<RwLock<Players>>,
 //     settings: GameSettings,
@@ -212,33 +226,7 @@ pub async fn game_loop(mut rx: mpsc::Receiver<GameMessage>, code: GameCode, sett
 //     }
 //
 //     async fn on_user_join(&mut self, (user, sender): (&User, Sender<ServerMessage>)) {
-//         let mut words = VecDeque::new();
-//         words.append(&mut self.words.clone());
-//         let first_word = words.front().unwrap().word();
-//         self.user_states.insert(
-//             user.token,
-//             UserState {
-//                 state: GameState::Playing,
-//                 tries_used: 0,
-//                 chat: vec![],
-//                 words,
-//             },
-//         );
-//         sender
-//             .log_send(ServerMessage::Init(Game {
-//                 settings: self.settings.clone(),
-//                 state: GameState::Playing,
-//                 players: self.players.read().await.player_names(),
-//                 chat: self.global_chat.clone(),
-//                 tries_used: 0,
-//                 word: first_word,
-//             }))
-//             .await;
-//         self.send_global_chat_message(ChatMessage {
-//             content: format!("→ {} joined the game", user.nickname),
-//             ..Default::default()
-//         })
-//         .await;
+
 //     }
 //
 //     async fn on_user_leave(&mut self, user: (&User, Sender<ServerMessage>)) {
