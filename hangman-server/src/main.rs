@@ -1,4 +1,7 @@
-use crate::{game::GameManager, word_generator::WordGenerator};
+use crate::{
+    game::GameManager,
+    word_generator::{WordGenerator, GENERATOR},
+};
 use axum::{
     routing::{get, post},
     Router,
@@ -11,7 +14,6 @@ use tower_http::{
 };
 use tracing::{debug, info};
 use tracing_subscriber::{filter::LevelFilter, EnvFilter};
-use crate::word_generator::GENERATOR;
 
 mod api;
 mod config;

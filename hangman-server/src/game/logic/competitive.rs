@@ -1,15 +1,14 @@
-use crate::{sender_utils::{LogSend}, word_generator};
+use crate::{
+    game::logic::{join_message, leave_message, Chat, GameMessage, Players},
+    sender_utils::LogSend,
+    word_generator,
+};
 use hangman_data::{
-    ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
-    UserToken,
+    ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, UserToken,
 };
-use std::{
-    collections::{HashMap},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, info, warn};
-use crate::game::logic::{Chat, GameMessage, join_message, leave_message, Players};
 
 struct PlayerState {
     pub state: GameState,
@@ -17,7 +16,12 @@ struct PlayerState {
     pub chat: Vec<ChatMessage>,
 }
 
-pub async fn game_loop(mut rx: mpsc::Receiver<GameMessage>, code: GameCode, settings: GameSettings, owner: UserToken) {
+pub async fn game_loop(
+    mut rx: mpsc::Receiver<GameMessage>,
+    code: GameCode,
+    settings: GameSettings,
+    owner: UserToken,
+) {
     let players = Arc::new(RwLock::new(Players::new()));
     let mut player_states = HashMap::new();
     let mut global_chat = Chat::new(Arc::clone(&players));
@@ -32,17 +36,20 @@ pub async fn game_loop(mut rx: mpsc::Receiver<GameMessage>, code: GameCode, sett
                 players.write().await.add_player(sender.clone(), user).await;
                 let player_state = match player_states.get(&token) {
                     None => {
-                        player_states.insert(token, PlayerState {
-                            state: GameState::Playing,
-                            tries_used: 0,
-                            chat: global_chat.clone(),
-                        });
+                        player_states.insert(
+                            token,
+                            PlayerState {
+                                state: GameState::Playing,
+                                tries_used: 0,
+                                chat: global_chat.clone(),
+                            },
+                        );
                         player_states.get(&token).unwrap()
                     }
                     Some(s) => {
                         debug!("{nickname} rejoined, using previous session");
                         s
-                    },
+                    }
                 };
 
                 sender

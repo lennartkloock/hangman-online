@@ -1,8 +1,8 @@
 use crate::config::HangmanConfig;
 use hangman_data::{Difficulty, GameLanguage, GameSettings};
+use once_cell::sync::OnceCell;
 use rand::Rng;
 use std::{collections::HashMap, path::PathBuf};
-use once_cell::sync::OnceCell;
 use thiserror::Error;
 use tokio::{fs, io};
 use tracing::{debug, info};

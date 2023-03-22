@@ -1,17 +1,19 @@
-use std::{
-    sync::Arc,
+use crate::{
+    game::logic::{
+        join_message, leave_message,
+        word::{GuessResult, Word},
+        Chat, GameMessage, Players,
+    },
+    sender_utils::LogSend,
+    word_generator,
 };
-use tokio::sync::{mpsc, RwLock};
-use tracing::{debug, info, log::warn};
 use hangman_data::{
     ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
     UserToken,
 };
-use crate::{game::logic::{
-    word::{GuessResult, Word},
-    Chat, GameMessage, Players,
-}, sender_utils::{LogSend}, word_generator};
-use crate::game::logic::{join_message, leave_message};
+use std::sync::Arc;
+use tokio::sync::{mpsc, RwLock};
+use tracing::{debug, info, log::warn};
 
 pub async fn game_loop(
     mut rx: mpsc::Receiver<GameMessage>,
@@ -31,11 +33,7 @@ pub async fn game_loop(
             GameMessage::Join { user, sender } => {
                 info!("[{code}] {} joins the game", user.nickname);
                 let nickname = user.nickname.clone();
-                players
-                    .write()
-                    .await
-                    .add_player(sender.clone(), user)
-                    .await;
+                players.write().await.add_player(sender.clone(), user).await;
 
                 sender
                     .log_send(ServerMessage::Init(Game {

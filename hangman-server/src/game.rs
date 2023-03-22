@@ -1,10 +1,7 @@
 use crate::game::logic::GameMessage;
 use futures::FutureExt;
 use hangman_data::{GameCode, GameMode, GameSettings, UserToken};
-use std::{
-    collections::HashMap,
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info};
 
@@ -27,15 +24,20 @@ impl GameManager {
         info!("new game: {}", code);
         let (tx, rx) = mpsc::channel(10);
         let games = Arc::clone(&self.games);
-        tokio::spawn(async move {
-            match &settings.mode {
-                GameMode::Team => logic::team::game_loop(rx, code, settings, owner).await,
-                GameMode::Competitive => logic::competitive::game_loop(rx, code, settings, owner).await,
+        tokio::spawn(
+            async move {
+                match &settings.mode {
+                    GameMode::Team => logic::team::game_loop(rx, code, settings, owner).await,
+                    GameMode::Competitive => {
+                        logic::competitive::game_loop(rx, code, settings, owner).await
+                    }
+                }
             }
-        }.then(move |_| async move {
-            debug!("[{code}] game loop finished, removing game");
-            games.lock().await.remove(&code);
-        }));
+            .then(move |_| async move {
+                debug!("[{code}] game loop finished, removing game");
+                games.lock().await.remove(&code);
+            }),
+        );
         self.games.lock().await.insert(code, tx);
         code
     }

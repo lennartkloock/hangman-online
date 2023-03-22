@@ -1,13 +1,13 @@
 //! Game logic
 
+use crate::sender_utils::send_to_all;
+use hangman_data::{ChatMessage, ClientMessage, ServerMessage, User, UserToken};
 use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
+    sync::Arc,
 };
-use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
-use hangman_data::{ChatMessage, ClientMessage, ServerMessage, User, UserToken};
-use crate::sender_utils::send_to_all;
 
 pub mod competitive;
 pub mod team;
@@ -49,7 +49,8 @@ impl Players {
     }
 
     pub async fn add_player(&mut self, tx: mpsc::Sender<ServerMessage>, user: User) {
-        self.send_to_all(ServerMessage::UpdatePlayers(self.player_names())).await;
+        self.send_to_all(ServerMessage::UpdatePlayers(self.player_names()))
+            .await;
         self.insert(user.token, (tx, user));
     }
 
@@ -70,9 +71,7 @@ impl Players {
     }
 
     pub fn player_names(&self) -> Vec<String> {
-        self.values()
-            .map(|(_, u)| u.nickname.clone())
-            .collect()
+        self.values().map(|(_, u)| u.nickname.clone()).collect()
     }
 }
 
@@ -105,7 +104,11 @@ impl Chat {
 
     pub async fn send_message(&mut self, msg: ChatMessage) {
         self.messages.push(msg.clone());
-        self.players.read().await.send_to_all(ServerMessage::ChatMessage(msg)).await;
+        self.players
+            .read()
+            .await
+            .send_to_all(ServerMessage::ChatMessage(msg))
+            .await;
     }
 }
 
