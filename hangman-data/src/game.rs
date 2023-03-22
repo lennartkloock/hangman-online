@@ -48,9 +48,18 @@ impl Display for GameCode {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum GameMode {
+    #[default]
+    Team,
+    Competitive,
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum GameLanguage {
+    #[default]
     English,
     Spanish,
     French,
@@ -124,6 +133,7 @@ impl Display for Difficulty {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GameSettings {
+    pub mode: GameMode,
     pub language: GameLanguage,
     pub difficulty: Difficulty,
 }

@@ -1,7 +1,7 @@
 use crate::{
     game::{
-        logic::{team::TeamGameLogic, GameMessage},
-        GameManager, ServerGame,
+        logic::GameMessage,
+        GameManager,
     },
     sender_utils::LogSend,
 };
@@ -25,9 +25,7 @@ pub async fn create_game(
     State(game_manager): State<GameManager>,
     Json(CreateGameBody { token, settings }): Json<CreateGameBody>,
 ) -> (StatusCode, Json<GameCode>) {
-    let game = ServerGame::<TeamGameLogic>::new(token, settings).await;
-    let code = game.code;
-    game_manager.add_game(game).await;
+    let code = game_manager.add_game(token, settings).await;
     (StatusCode::CREATED, Json(code))
 }
 

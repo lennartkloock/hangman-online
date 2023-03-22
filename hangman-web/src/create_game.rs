@@ -9,7 +9,7 @@ use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use fermi::use_read;
-use hangman_data::{CreateGameBody, Difficulty, GameCode, GameLanguage, GameSettings};
+use hangman_data::{CreateGameBody, Difficulty, GameCode, GameLanguage, GameMode, GameSettings};
 use log::{error, info};
 use thiserror::Error;
 
@@ -43,7 +43,7 @@ pub fn CreateGame(cx: Scope) -> Element {
                                         let token = user.token; // Copies token
                                         to_owned![router, client, error]; // Clones states
                                         cx.spawn(async move {
-                                            let body = CreateGameBody { token, settings: GameSettings { language, difficulty } };
+                                            let body = CreateGameBody { token, settings: GameSettings { mode: GameMode::Team, language, difficulty } };
                                             match client.post(format!("{origin}/api/game"))
                                                 .json(&body)
                                                 .send()
