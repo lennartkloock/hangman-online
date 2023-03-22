@@ -4,7 +4,6 @@ use axum::{
     Router,
 };
 use hangman_data::GameLanguage;
-use once_cell::sync::OnceCell;
 use std::net::SocketAddr;
 use tower_http::{
     services::{ServeDir, ServeFile},
@@ -12,14 +11,13 @@ use tower_http::{
 };
 use tracing::{debug, info};
 use tracing_subscriber::{filter::LevelFilter, EnvFilter};
+use crate::word_generator::GENERATOR;
 
 mod api;
 mod config;
 mod game;
 mod sender_utils;
 mod word_generator;
-
-static GENERATOR: OnceCell<WordGenerator> = OnceCell::new();
 
 #[tokio::main]
 async fn main() {

@@ -7,14 +7,11 @@ use hangman_data::{
     ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
     UserToken,
 };
-use crate::{
-    game::logic::{
-        word::{GuessResult, Word},
-        Chat, GameMessage, Players,
-    },
-    sender_utils::{LogSend},
-    GENERATOR,
-};
+use crate::{game::logic::{
+    word::{GuessResult, Word},
+    Chat, GameMessage, Players,
+}, sender_utils::{LogSend}, word_generator};
+use crate::game::logic::{join_message, leave_message};
 
 pub async fn game_loop(
     mut rx: mpsc::Receiver<GameMessage>,
@@ -26,18 +23,18 @@ pub async fn game_loop(
     let mut chat = Chat::new(Arc::clone(&players));
     let mut state = GameState::Playing;
     let mut tries_used = 0;
-    let mut word = generate_word(&settings).await;
+    let mut word = Word::new(word_generator::generate_word(&settings).await);
 
     while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
         match msg {
             GameMessage::Join { user, sender } => {
-                info!("[{code}] {user:?} joins the game");
+                info!("[{code}] {} joins the game", user.nickname);
                 let nickname = user.nickname.clone();
                 players
                     .write()
                     .await
-                    .add_player(user.token, sender.clone(), user)
+                    .add_player(sender.clone(), user)
                     .await;
 
                 sender
@@ -51,16 +48,16 @@ pub async fn game_loop(
                     }))
                     .await;
 
-                chat.join_message(&nickname).await;
+                chat.send_message(join_message(&nickname)).await;
             }
             GameMessage::Leave(token) => {
                 let Some((_, user)) = players.write().await.remove_player(&token).await else {
                     warn!("[{code}] there was no user in this game with this token");
                     return;
                 };
-                info!("[{code}] {user:?} left the game");
+                info!("[{code}] {} left the game", user.nickname);
 
-                chat.leave_message(&user.nickname).await;
+                chat.send_message(leave_message(&user.nickname)).await;
 
                 if players.read().await.is_empty() {
                     info!("[{code}] all players left the game, closing");
@@ -133,7 +130,7 @@ pub async fn game_loop(
                             state = GameState::Playing;
                             chat.retain(|m| m.from.is_none());
                             tries_used = 0;
-                            word = generate_word(&settings).await;
+                            word = Word::new(word_generator::generate_word(&settings).await);
                             players
                                 .read()
                                 .await
@@ -160,15 +157,4 @@ pub async fn game_loop(
             }
         }
     }
-}
-
-async fn generate_word(settings: &GameSettings) -> Word {
-    Word::new(
-        GENERATOR
-            .get()
-            .expect("generator not initialized")
-            .generate(&settings.language, &settings.difficulty)
-            .await
-            .expect("failed to generate word"),
-    )
 }

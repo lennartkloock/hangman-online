@@ -26,33 +26,37 @@ pub enum GameMessage {
     },
 }
 
-pub trait ToName {
-    fn to_name(&self) -> &str;
+pub fn join_message(name: &str) -> ChatMessage {
+    ChatMessage {
+        content: format!("→ {} joined the game", name),
+        ..Default::default()
+    }
 }
 
-impl ToName for User {
-    fn to_name(&self) -> &str {
-        &self.nickname
+pub fn leave_message(name: &str) -> ChatMessage {
+    ChatMessage {
+        content: format!("← {} left the game", name),
+        ..Default::default()
     }
 }
 
 #[derive(Debug)]
-pub struct Players<T>(HashMap<UserToken, (mpsc::Sender<ServerMessage>, T)>);
+pub struct Players(HashMap<UserToken, (mpsc::Sender<ServerMessage>, User)>);
 
-impl<T: ToName> Players<T> {
+impl Players {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub async fn add_player(&mut self, token: UserToken, tx: mpsc::Sender<ServerMessage>, t: T) {
+    pub async fn add_player(&mut self, tx: mpsc::Sender<ServerMessage>, user: User) {
         self.send_to_all(ServerMessage::UpdatePlayers(self.player_names())).await;
-        self.insert(token, (tx, t));
+        self.insert(user.token, (tx, user));
     }
 
     pub async fn remove_player(
         &mut self,
         token: &UserToken,
-    ) -> Option<(mpsc::Sender<ServerMessage>, T)> {
+    ) -> Option<(mpsc::Sender<ServerMessage>, User)> {
         let res = self.remove(token);
         if res.is_some() {
             self.send_to_all(ServerMessage::UpdatePlayers(self.player_names()))
@@ -67,32 +71,32 @@ impl<T: ToName> Players<T> {
 
     pub fn player_names(&self) -> Vec<String> {
         self.values()
-            .map(|(_, t)| t.to_name().to_string())
+            .map(|(_, u)| u.nickname.clone())
             .collect()
     }
 }
 
-impl<T> Deref for Players<T> {
-    type Target = HashMap<UserToken, (mpsc::Sender<ServerMessage>, T)>;
+impl Deref for Players {
+    type Target = HashMap<UserToken, (mpsc::Sender<ServerMessage>, User)>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<T> DerefMut for Players<T> {
+impl DerefMut for Players {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-pub struct Chat<T> {
-    players: Arc<RwLock<Players<T>>>,
+pub struct Chat {
+    players: Arc<RwLock<Players>>,
     messages: Vec<ChatMessage>,
 }
 
-impl<T: ToName> Chat<T> {
-    pub fn new(players: Arc<RwLock<Players<T>>>) -> Self {
+impl Chat {
+    pub fn new(players: Arc<RwLock<Players>>) -> Self {
         Self {
             players,
             messages: vec![],
@@ -103,23 +107,9 @@ impl<T: ToName> Chat<T> {
         self.messages.push(msg.clone());
         self.players.read().await.send_to_all(ServerMessage::ChatMessage(msg)).await;
     }
-
-    pub async fn join_message(&mut self, name: &str) {
-        self.send_message(ChatMessage {
-            content: format!("→ {} joined the game", name),
-            ..Default::default()
-        }).await;
-    }
-
-    pub async fn leave_message(&mut self, name: &str) {
-        self.send_message(ChatMessage {
-            content: format!("← {} left the game", name),
-            ..Default::default()
-        }).await;
-    }
 }
 
-impl<T> Deref for Chat<T> {
+impl Deref for Chat {
     type Target = Vec<ChatMessage>;
 
     fn deref(&self) -> &Self::Target {
@@ -127,7 +117,7 @@ impl<T> Deref for Chat<T> {
     }
 }
 
-impl<T> DerefMut for Chat<T> {
+impl DerefMut for Chat {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.messages
     }

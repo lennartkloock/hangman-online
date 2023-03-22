@@ -1,101 +1,100 @@
-use crate::{
-    game::{
-        logic::word::{GuessResult, Word},
-    },
-    sender_utils::{LogSend},
-    GENERATOR,
-};
+use crate::{sender_utils::{LogSend}, word_generator};
 use hangman_data::{
-    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
-    User, UserToken,
+    ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
+    UserToken,
 };
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap},
     sync::Arc,
 };
-use tokio::sync::{mpsc, mpsc::Sender, RwLock};
+use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, info, warn};
-use crate::game::logic::{GameMessage, Players, ToName};
+use crate::game::logic::{Chat, GameMessage, join_message, leave_message, Players};
 
-struct UserState {
-    user: User,
-    state: GameState,
-    tries_used: u32,
-    chat: Vec<ChatMessage>,
-}
-
-impl ToName for UserState {
-    fn to_name(&self) -> &str {
-        &self.user.nickname
-    }
+struct PlayerState {
+    pub state: GameState,
+    pub tries_used: u32,
+    pub chat: Vec<ChatMessage>,
 }
 
 pub async fn game_loop(mut rx: mpsc::Receiver<GameMessage>, code: GameCode, settings: GameSettings, owner: UserToken) {
-    // let mut players = Players::new();
-    // let mut global_chat = Vec::new();
-    //
-    // while let Some(msg) = rx.recv().await {
-    //     debug!("[{code}] received {msg:?}");
-    //     match msg {
-    //         GameMessage::Join { user, sender } => {
-    //             info!("[{code}] {user:?} joins the game");
-    //             players.add_player(user.token, sender, UserState {
-    //                 user,
-    //                 state: GameState::Playing,
-    //                 tries_used: 0,
-    //                 chat: vec![],
-    //             });
-    //
-    //             sender
-    //                 .log_send(ServerMessage::Init(Game {
-    //                     settings: settings.clone(),
-    //                     state: GameState::Playing,
-    //                     players: players.player_names(),
-    //                     chat: global_chat.clone(),
-    //                     tries_used: 0,
-    //                     word: first_word,
-    //                 }))
-    //                 .await;
-    //             self.send_global_chat_message(ChatMessage {
-    //                 content: format!("→ {} joined the game", user.nickname),
-    //                 ..Default::default()
-    //             })
-    //             .await;
-    //         }
-    //         GameMessage::Leave(token) => {
-    //             let Some((user, sender)) = players.remove(&token) else {
-    //                 warn!(
-    //                     "[{}] there was no user in this game with this token",
-    //                     self.code
-    //                 );
-    //                 return;
-    //             };
-    //             info!("[{}] {user:?} left the game", self.code);
-    //             // Send update to all clients
-    //             players
-    //                 .send_to_all(ServerMessage::UpdatePlayers(
-    //                     players.player_names(),
-    //                 ))
-    //                 .await;
-    //
-    //             // ...
-    //
-    //             if players.is_empty() {
-    //                 info!("[{}] all players left the game, closing", self.code);
-    //                 break;
-    //             } else if token == owner {
-    //                 info!("[{}] the game owner left the game, closing", self.code);
-    //                 break;
-    //             }
-    //         }
-    //         GameMessage::ClientMessage { message, token } => {
-    //             if let Some((_, user_state)) = players.get(&token) {
-    //                 // ...
-    //             }
-    //         }
-    //     }
-    // }
-    todo!()
+    let players = Arc::new(RwLock::new(Players::new()));
+    let mut player_states = HashMap::new();
+    let mut global_chat = Chat::new(Arc::clone(&players));
+
+    while let Some(msg) = rx.recv().await {
+        debug!("[{code}] received {msg:?}");
+        match msg {
+            GameMessage::Join { user, sender } => {
+                info!("[{code}] {} joins the game", user.nickname);
+                let token = user.token;
+                let nickname = user.nickname.clone();
+                players.write().await.add_player(sender.clone(), user).await;
+                let player_state = match player_states.get(&token) {
+                    None => {
+                        player_states.insert(token, PlayerState {
+                            state: GameState::Playing,
+                            tries_used: 0,
+                            chat: global_chat.clone(),
+                        });
+                        player_states.get(&token).unwrap()
+                    }
+                    Some(s) => {
+                        debug!("{nickname} rejoined, using previous session");
+                        s
+                    },
+                };
+
+                sender
+                    .log_send(ServerMessage::Init(Game {
+                        settings: settings.clone(),
+                        state: player_state.state.clone(),
+                        players: players.read().await.player_names(),
+                        chat: player_state.chat.clone(),
+                        tries_used: player_state.tries_used,
+                        word: word_generator::generate_word(&settings).await,
+                    }))
+                    .await;
+
+                let join_msg = join_message(&nickname);
+                for state in player_states.values_mut() {
+                    state.chat.push(join_msg.clone());
+                }
+                global_chat.send_message(join_msg).await;
+            }
+            GameMessage::Leave(token) => {
+                let Some((_, user)) = players.write().await.remove_player(&token).await else {
+                    warn!("[{code}] there was no user in this game with this token");
+                    return;
+                };
+                info!("[{code}] {} left the game", user.nickname);
+
+                let leave_msg = leave_message(&user.nickname);
+                for state in player_states.values_mut() {
+                    state.chat.push(leave_msg.clone());
+                }
+                global_chat.send_message(leave_msg).await;
+
+                if players.read().await.is_empty() {
+                    info!("[{code}] all players left the game, closing");
+                    break;
+                } else if token == owner {
+                    info!("[{code}] the game owner left the game, closing");
+                    break;
+                }
+            }
+            GameMessage::ClientMessage { message, token } => {
+                if let Some((_, user)) = players.read().await.get(&token) {
+                    match message {
+                        ClientMessage::ChatMessage(_) => {}
+                        ClientMessage::NextRound => {}
+                    }
+                } else {
+                    warn!("[{code}] there was no user in this game with this token");
+                }
+            }
+        }
+    }
 }
 
 // pub struct CompetitiveGameLogic {
