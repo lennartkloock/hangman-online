@@ -3,17 +3,19 @@ use crate::{
     sender_utils::LogSend,
     word_generator,
 };
-use hangman_data::{
-    ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, UserToken,
-};
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, UserToken};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, info, warn};
+use crate::game::logic::word::{GuessResult, Word};
+use crate::word_generator::generate_word;
 
 struct PlayerState {
     pub state: GameState,
     pub tries_used: u32,
     pub chat: Vec<ChatMessage>,
+    pub word: Word,
+    pub word_index: usize,
 }
 
 pub async fn game_loop(
@@ -25,6 +27,7 @@ pub async fn game_loop(
     let players = Arc::new(RwLock::new(Players::new()));
     let mut player_states = HashMap::new();
     let mut global_chat = Chat::new(Arc::clone(&players));
+    let mut words = vec![Word::new(word_generator::generate_word(&settings).await)];
 
     while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
@@ -42,6 +45,8 @@ pub async fn game_loop(
                                 state: GameState::Playing,
                                 tries_used: 0,
                                 chat: global_chat.clone(),
+                                word: words[0].clone(),
+                                word_index: 0,
                             },
                         );
                         player_states.get(&token).unwrap()
@@ -59,7 +64,7 @@ pub async fn game_loop(
                         players: players.read().await.player_names(),
                         chat: player_state.chat.clone(),
                         tries_used: player_state.tries_used,
-                        word: word_generator::generate_word(&settings).await,
+                        word: player_state.word.word(),
                     }))
                     .await;
 
@@ -91,10 +96,82 @@ pub async fn game_loop(
                 }
             }
             GameMessage::ClientMessage { message, token } => {
-                if let Some((_, user)) = players.read().await.get(&token) {
+                if let Some((sender, user)) = players.read().await.get(&token) {
                     match message {
-                        ClientMessage::ChatMessage(_) => {}
-                        ClientMessage::NextRound => {}
+                        ClientMessage::ChatMessage(msg) => {
+                            let Some(player_state) = player_states.get_mut(&token) else {
+                                warn!("failed to find player state for {token}");
+                                return;
+                            };
+                            let guess = player_state.word.guess(msg.clone());
+                            match guess {
+                                GuessResult::Hit => info!("[{code}] {} guessed right", user.nickname),
+                                GuessResult::Miss => {
+                                    info!("[{code}] {} guessed wrong", user.nickname);
+                                    player_state.tries_used += 1;
+                                }
+                                GuessResult::Solved => info!("[{code}] {} solved the word", user.nickname),
+                            }
+
+                            sender
+                                .log_send(ServerMessage::UpdateGame {
+                                    word: player_state.word.word(),
+                                    tries_used: player_state.tries_used,
+                                })
+                                .await;
+                            sender
+                                .log_send(ServerMessage::ChatMessage(ChatMessage {
+                                    from: Some(user.nickname.clone()),
+                                    content: msg,
+                                    color: guess.clone().into(),
+                                }))
+                                .await;
+                            if guess == GuessResult::Solved || player_state.tries_used == 9 {
+                                let chat_msg = if guess == GuessResult::Solved {
+                                    ChatMessage {
+                                        content: "You guessed the word!".to_string(),
+                                        color: ChatColor::Green,
+                                        ..Default::default()
+                                    }
+                                } else {
+                                    ChatMessage {
+                                        content: format!(
+                                            "No tries left! The word was \"{}\"",
+                                            player_state.word.target()
+                                        ),
+                                        color: ChatColor::Red,
+                                        ..Default::default()
+                                    }
+                                };
+                                player_state.chat.push(chat_msg.clone());
+                                sender.log_send(ServerMessage::ChatMessage(chat_msg)).await;
+
+                                // New word
+                                player_state.chat.retain(|m| m.from.is_none());
+                                player_state.tries_used = 0;
+                                player_state.word_index += 1;
+                                if let Some(new_word) = words.get(player_state.word_index) {
+                                    player_state.word = new_word.clone();
+                                } else {
+                                    let new_word = Word::new(generate_word(&settings).await);
+                                    player_state.word = new_word.clone();
+                                    words.push(new_word);
+                                }
+                                sender
+                                    .log_send(ServerMessage::Init(Game {
+                                        settings: settings.clone(),
+                                        state: player_state.state.clone(),
+                                        players: players.read().await.player_names(),
+                                        chat: player_state.chat.clone(),
+                                        tries_used: player_state.tries_used,
+                                        word: player_state.word.word(),
+                                    }))
+                                    .await;
+                            }
+                        }
+                        ClientMessage::NextRound => {
+                            todo!()
+                        }
                     }
                 } else {
                     warn!("[{code}] there was no user in this game with this token");
