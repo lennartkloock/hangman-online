@@ -35,15 +35,16 @@ pub fn CreateGame(cx: Scope) -> Element {
                 CenterContainer {
                     Form {
                         onsubmit: |e: FormEvent| {
+                            let mode = e.data.values.get("mode").and_then(|s| serde_json::from_str::<GameMode>(s).ok());
                             let lang = e.data.values.get("language").and_then(|s| serde_json::from_str::<GameLanguage>(s).ok());
                             let diff = e.data.values.get("difficulty").and_then(|s| serde_json::from_str::<Difficulty>(s).ok());
-                            if let (Some(language), Some(difficulty)) = (lang, diff) {
+                            if let (Some(mode), Some(language), Some(difficulty)) = (mode, lang, diff) {
                                 match urls::http_url_origin() {
                                     Ok(origin) => {
                                         let token = user.token; // Copies token
                                         to_owned![router, client, error]; // Clones states
                                         cx.spawn(async move {
-                                            let body = CreateGameBody { token, settings: GameSettings { mode: GameMode::Team, language, difficulty } };
+                                            let body = CreateGameBody { token, settings: GameSettings { mode, language, difficulty } };
                                             match client.post(format!("{origin}/api/game"))
                                                 .json(&body)
                                                 .send()
@@ -78,6 +79,19 @@ pub fn CreateGame(cx: Scope) -> Element {
                         }
                         div {
                             class: "p-6 flex flex-col gap-1",
+                            label {
+                                class: "flex items-center gap-2",
+                                MaterialIcon { name: "people", color: MaterialIconColor::Light, size: 42 },
+                                select {
+                                    class: "input p-1 w-full rounded",
+                                    required: true,
+                                    name: "mode",
+                                    GameMode::all().iter().map(|m| {
+                                        let value = serde_json::to_string(&m).expect("failed to serialize game mode");
+                                        rsx!(option { value: "{value}", "{m}" })
+                                    })
+                                }
+                            }
                             label {
                                 class: "flex items-center gap-2",
                                 MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 42 },

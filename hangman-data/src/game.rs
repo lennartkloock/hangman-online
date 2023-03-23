@@ -56,6 +56,25 @@ pub enum GameMode {
     Competitive,
 }
 
+impl GameMode {
+    pub fn all() -> Vec<Self> {
+        vec![
+            GameMode::Team,
+            GameMode::Competitive,
+        ]
+    }
+}
+
+impl Display for GameMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mode = match self {
+            GameMode::Team => "Team",
+            GameMode::Competitive => "Competitive",
+        };
+        write!(f, "{}", mode)
+    }
+}
+
 #[derive(Debug, Default, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum GameLanguage {
