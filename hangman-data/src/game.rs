@@ -7,6 +7,7 @@ use std::{
     num::ParseIntError,
     str::FromStr,
 };
+use chrono::Utc;
 use thiserror::Error;
 
 /// Two bytes that represent a game code
@@ -150,7 +151,7 @@ impl Display for Difficulty {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GameSettings {
     pub mode: GameMode,
     pub language: GameLanguage,
@@ -172,6 +173,7 @@ pub struct Game {
     pub chat: Vec<ChatMessage>,
     pub tries_used: u32,
     pub word: String,
+    pub countdown: Option<chrono::DateTime<Utc>>,
 }
 
 #[cfg(test)]

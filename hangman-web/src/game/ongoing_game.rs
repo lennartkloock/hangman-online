@@ -7,6 +7,7 @@ use crate::{
     urls,
     urls::UrlError,
 };
+use chrono::Utc;
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
@@ -14,7 +15,11 @@ use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
 use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, GameState, User};
 use log::error;
-use std::rc::Rc;
+use std::{
+    alloc::System,
+    rc::Rc,
+    time::{Duration, Instant, SystemTime},
+};
 use thiserror::Error;
 
 mod game_logic;
@@ -114,8 +119,9 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             chat,
             tries_used,
             word,
+            countdown,
         }) => cx.render(rsx!(
-            Header { code: code, settings: settings.clone() }
+            Header { code: *code, settings: settings.clone(), countdown: countdown.clone() }
             div {
                 class: "h-full flex items-center",
                 div {
@@ -171,8 +177,15 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
     })
 }
 
-#[inline_props]
-fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Element<'a> {
+#[derive(PartialEq, Props)]
+struct HeaderProps {
+    code: GameCode,
+    settings: GameSettings,
+    #[props(!optional)]
+    countdown: Option<chrono::DateTime<Utc>>,
+}
+
+fn Header(cx: Scope<HeaderProps>) -> Element {
     let router = use_router(cx);
 
     let on_copy = move |_| {
@@ -181,7 +194,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
         match web_sys::window().and_then(|w| w.navigator().clipboard()) {
             Some(c) => {
                 let mut url = router.current_location().url.clone();
-                url.set_path(&format!("/game/{code}"));
+                url.set_path(&format!("/game/{}", cx.props.code));
                 cx.spawn(async move {
                     if let Err(e) =
                         wasm_bindgen_futures::JsFuture::from(c.write_text(url.as_str())).await
@@ -196,22 +209,52 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
         }
     };
 
-    let lang = &settings.language;
+    let countdown_text = use_state(cx, || "".to_string());
+
+    use_coroutine(cx, |_: UnboundedReceiver<()>| {
+        to_owned![countdown_text];
+        let countdown = cx.props.countdown;
+        async move {
+            if let Some(date_time) = countdown {
+                while let Some(dur) = {
+                    let dur = date_time - Utc::now();
+                    (dur > chrono::Duration::zero()).then(|| dur)
+                } {
+                    countdown_text.set(format!(
+                        "{:0>2}:{:0>2}", //Keep leading zeros
+                        dur.num_minutes(),
+                        dur.num_seconds() % 60
+                    ));
+                    gloo_timers::future::sleep(Duration::from_secs(1)).await;
+                }
+                countdown_text.set(String::new());
+            }
+        }
+    });
+
+    let lang = &cx.props.settings.language;
 
     cx.render(rsx!(
         div {
-            class: "absolute top-2 left-2 flex items-center gap-1 p-1",
-            span { class: "font-mono text-xl", "{code}" }
-            MaterialButton { name: "content_copy", onclick: on_copy }
-        }
-        div {
-            class: "absolute top-2 right-2 flex items-center gap-1",
-            button {
-                class: "material-button gap-1 bg-zinc-700",
-                MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
-                span { "{lang}" }
+            class: "absolute top-2 left-2 right-2 flex justify-between",
+            div {
+                class: "flex items-center gap-1 p-1",
+                span { class: "font-mono text-xl", "{cx.props.code}" }
+                MaterialButton { name: "content_copy", onclick: on_copy }
             }
-            MaterialButton { name: "settings" }
+            div {
+                class: "font-mono text-2xl p-1",
+                "{countdown_text}"
+            }
+            div {
+                class: "flex items-center gap-1",
+                button {
+                    class: "material-button gap-1 bg-zinc-700",
+                    MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
+                    span { "{lang}" }
+                }
+                MaterialButton { name: "settings" }
+            }
         }
     ))
 }

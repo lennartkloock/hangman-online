@@ -8,7 +8,6 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, info, warn};
 use crate::game::logic::word::{GuessResult, Word};
-use crate::word_generator::generate_word;
 
 struct PlayerState {
     pub state: GameState,
@@ -28,6 +27,7 @@ pub async fn game_loop(
     let mut player_states = HashMap::new();
     let mut global_chat = Chat::new(Arc::clone(&players));
     let mut words = vec![Word::new(word_generator::generate_word(&settings).await)];
+    let countdown = chrono::Utc::now() + chrono::Duration::minutes(2);
 
     while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
@@ -65,6 +65,7 @@ pub async fn game_loop(
                         chat: player_state.chat.clone(),
                         tries_used: player_state.tries_used,
                         word: player_state.word.word(),
+                        countdown: Some(countdown),
                     }))
                     .await;
 
@@ -153,7 +154,7 @@ pub async fn game_loop(
                                 if let Some(new_word) = words.get(player_state.word_index) {
                                     player_state.word = new_word.clone();
                                 } else {
-                                    let new_word = Word::new(generate_word(&settings).await);
+                                    let new_word = Word::new(word_generator::generate_word(&settings).await);
                                     player_state.word = new_word.clone();
                                     words.push(new_word);
                                 }
@@ -165,6 +166,7 @@ pub async fn game_loop(
                                         chat: player_state.chat.clone(),
                                         tries_used: player_state.tries_used,
                                         word: player_state.word.word(),
+                                        countdown: Some(countdown),
                                     }))
                                     .await;
                             }

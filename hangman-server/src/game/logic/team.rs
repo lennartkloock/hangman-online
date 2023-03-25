@@ -43,6 +43,7 @@ pub async fn game_loop(
                         chat: chat.clone(),
                         tries_used,
                         word: word.word(),
+                        countdown: None,
                     }))
                     .await;
 
@@ -139,6 +140,7 @@ pub async fn game_loop(
                                     chat: chat.clone(),
                                     tries_used,
                                     word: word.word(),
+                                    countdown: None,
                                 }))
                                 .await;
                             chat.send_message(ChatMessage {
