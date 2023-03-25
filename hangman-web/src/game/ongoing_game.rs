@@ -265,7 +265,7 @@ fn Footer<'a>(
     game_state: GameState,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let button = (*game_state != GameState::Playing).then(|| {
+    let button = (*game_state == GameState::RoundFinished).then(|| {
         cx.render(rsx!(
             button {
                 class: "base-button ring-zinc-500 py-1",

@@ -1,13 +1,19 @@
 use crate::{
-    game::logic::{join_message, leave_message, Chat, GameMessage, Players},
+    game::logic::{
+        join_message, leave_message,
+        word::{GuessResult, Word},
+        Chat, GameMessage, Players,
+    },
     sender_utils::LogSend,
     word_generator,
 };
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage, UserToken};
-use std::{collections::HashMap, sync::Arc};
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
+    UserToken,
+};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, info, warn};
-use crate::game::logic::word::{GuessResult, Word};
 
 struct PlayerState {
     pub state: GameState,
@@ -24,10 +30,25 @@ pub async fn game_loop(
     owner: UserToken,
 ) {
     let players = Arc::new(RwLock::new(Players::new()));
-    let mut player_states = HashMap::new();
+    let mut player_states: Arc<RwLock<HashMap<UserToken, PlayerState>>> =
+        Arc::new(RwLock::new(HashMap::new()));
     let mut global_chat = Chat::new(Arc::clone(&players));
     let mut words = vec![Word::new(word_generator::generate_word(&settings).await)];
     let countdown = chrono::Utc::now() + chrono::Duration::minutes(2);
+
+    let players_c = Arc::clone(&players);
+    let player_states_c = Arc::clone(&player_states);
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(2 * 60)).await;
+        for p in player_states_c.write().await.values_mut() {
+            p.state = GameState::Finished;
+        }
+        players_c
+            .read()
+            .await
+            .send_to_all(ServerMessage::UpdateGameState(GameState::Finished))
+            .await;
+    });
 
     while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
@@ -37,9 +58,10 @@ pub async fn game_loop(
                 let token = user.token;
                 let nickname = user.nickname.clone();
                 players.write().await.add_player(sender.clone(), user).await;
-                let player_state = match player_states.get(&token) {
+                let mut lock = player_states.write().await;
+                let player_state = match lock.get(&token) {
                     None => {
-                        player_states.insert(
+                        lock.insert(
                             token,
                             PlayerState {
                                 state: GameState::Playing,
@@ -49,7 +71,7 @@ pub async fn game_loop(
                                 word_index: 0,
                             },
                         );
-                        player_states.get(&token).unwrap()
+                        lock.get(&token).unwrap()
                     }
                     Some(s) => {
                         debug!("{nickname} rejoined, using previous session");
@@ -70,7 +92,7 @@ pub async fn game_loop(
                     .await;
 
                 let join_msg = join_message(&nickname);
-                for state in player_states.values_mut() {
+                for state in lock.values_mut() {
                     state.chat.push(join_msg.clone());
                 }
                 global_chat.send_message(join_msg).await;
@@ -83,7 +105,7 @@ pub async fn game_loop(
                 info!("[{code}] {} left the game", user.nickname);
 
                 let leave_msg = leave_message(&user.nickname);
-                for state in player_states.values_mut() {
+                for state in player_states.write().await.values_mut() {
                     state.chat.push(leave_msg.clone());
                 }
                 global_chat.send_message(leave_msg).await;
@@ -100,18 +122,23 @@ pub async fn game_loop(
                 if let Some((sender, user)) = players.read().await.get(&token) {
                     match message {
                         ClientMessage::ChatMessage(msg) => {
-                            let Some(player_state) = player_states.get_mut(&token) else {
+                            let mut lock = player_states.write().await;
+                            let Some(player_state) = lock.get_mut(&token) else {
                                 warn!("failed to find player state for {token}");
                                 return;
                             };
                             let guess = player_state.word.guess(msg.clone());
                             match guess {
-                                GuessResult::Hit => info!("[{code}] {} guessed right", user.nickname),
+                                GuessResult::Hit => {
+                                    info!("[{code}] {} guessed right", user.nickname)
+                                }
                                 GuessResult::Miss => {
                                     info!("[{code}] {} guessed wrong", user.nickname);
                                     player_state.tries_used += 1;
                                 }
-                                GuessResult::Solved => info!("[{code}] {} solved the word", user.nickname),
+                                GuessResult::Solved => {
+                                    info!("[{code}] {} solved the word", user.nickname)
+                                }
                             }
 
                             sender
@@ -154,7 +181,8 @@ pub async fn game_loop(
                                 if let Some(new_word) = words.get(player_state.word_index) {
                                     player_state.word = new_word.clone();
                                 } else {
-                                    let new_word = Word::new(word_generator::generate_word(&settings).await);
+                                    let new_word =
+                                        Word::new(word_generator::generate_word(&settings).await);
                                     player_state.word = new_word.clone();
                                     words.push(new_word);
                                 }

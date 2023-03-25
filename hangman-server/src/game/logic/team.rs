@@ -100,7 +100,7 @@ pub async fn game_loop(
                             .await;
 
                             if guess == GuessResult::Solved {
-                                state = GameState::Solved;
+                                state = GameState::RoundFinished;
                                 chat.send_message(ChatMessage {
                                     content: "You guessed the word!".to_string(),
                                     color: ChatColor::Green,
@@ -108,7 +108,7 @@ pub async fn game_loop(
                                 })
                                 .await;
                             } else if tries_used == 9 {
-                                state = GameState::OutOfTries;
+                                state = GameState::RoundFinished;
                                 chat.send_message(ChatMessage {
                                     content: format!(
                                         "No tries left! The word was \"{}\"",
