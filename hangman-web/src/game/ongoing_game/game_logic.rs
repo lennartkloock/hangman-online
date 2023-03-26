@@ -25,6 +25,7 @@ pub fn handle_message(msg: ServerMessage, state: &UseRef<ClientState>) {
             info!("new game state: {game_state:?}");
             modify_game(s, |game| game.state = game_state);
         }),
+        ServerMessage::GameResult(r) => state.set(ClientState::GameResult(r)),
     }
 }
 

@@ -11,9 +11,12 @@ use hangman_data::{
     ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
     UserToken,
 };
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
+use once_cell::sync::Lazy;
 use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, info, warn};
+
+static GAME_DURATION: Lazy<chrono::Duration> = Lazy::new(|| chrono::Duration::minutes(2));
 
 struct PlayerState {
     pub state: GameState,
@@ -21,6 +24,7 @@ struct PlayerState {
     pub chat: Vec<ChatMessage>,
     pub word: Word,
     pub word_index: usize,
+    pub score: u32,
 }
 
 pub async fn game_loop(
@@ -30,23 +34,27 @@ pub async fn game_loop(
     owner: UserToken,
 ) {
     let players = Arc::new(RwLock::new(Players::new()));
-    let mut player_states: Arc<RwLock<HashMap<UserToken, PlayerState>>> =
+    let player_states: Arc<RwLock<HashMap<UserToken, PlayerState>>> =
         Arc::new(RwLock::new(HashMap::new()));
     let mut global_chat = Chat::new(Arc::clone(&players));
     let mut words = vec![Word::new(word_generator::generate_word(&settings).await)];
-    let countdown = chrono::Utc::now() + chrono::Duration::minutes(2);
+    let countdown = chrono::Utc::now() + *GAME_DURATION;
 
     let players_c = Arc::clone(&players);
     let player_states_c = Arc::clone(&player_states);
     tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(2 * 60)).await;
-        for p in player_states_c.write().await.values_mut() {
-            p.state = GameState::Finished;
+        tokio::time::sleep(GAME_DURATION.to_std().expect("failed to convert chrono duration to std duration")).await;
+        let mut results = vec![];
+        for (token, state) in player_states_c.read().await.iter() {
+            // Only include players that are still connected
+            if let Some((_, user)) = players_c.read().await.get(token) {
+                results.push((user.nickname.clone(), state.score));
+            }
         }
         players_c
             .read()
             .await
-            .send_to_all(ServerMessage::UpdateGameState(GameState::Finished))
+            .send_to_all(ServerMessage::GameResult(results))
             .await;
     });
 
@@ -69,6 +77,7 @@ pub async fn game_loop(
                                 chat: global_chat.clone(),
                                 word: words[0].clone(),
                                 word_index: 0,
+                                score: 0,
                             },
                         );
                         lock.get(&token).unwrap()
@@ -137,7 +146,8 @@ pub async fn game_loop(
                                     player_state.tries_used += 1;
                                 }
                                 GuessResult::Solved => {
-                                    info!("[{code}] {} solved the word", user.nickname)
+                                    info!("[{code}] {} solved the word", user.nickname);
+                                    player_state.score += 1;
                                 }
                             }
 
@@ -200,7 +210,7 @@ pub async fn game_loop(
                             }
                         }
                         ClientMessage::NextRound => {
-                            todo!()
+                            warn!("next round not implemented for competitive");
                         }
                     }
                 } else {

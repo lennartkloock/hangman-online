@@ -38,4 +38,5 @@ pub enum ServerMessage {
     UpdateGame { word: String, tries_used: u32 },
     ChatMessage(ChatMessage),
     UpdateGameState(GameState),
+    GameResult(Vec<(String, u32)>),
 }

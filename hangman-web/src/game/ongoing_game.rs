@@ -62,6 +62,7 @@ pub enum ClientState {
     /// waiting for connection and init message
     Loading,
     Joined(Game),
+    GameResult(Vec<(String, u32)>),
     /// Rc to make it cloneable
     Error(Rc<ConnectionError>),
 }
@@ -174,6 +175,9 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             }
             Footer { game_state: state.clone(), ws_write: ws_write }
         )),
+        ClientState::GameResult(results) => cx.render(rsx!(
+            p { "{results:?}" }
+        )),
     })
 }
 
@@ -225,9 +229,9 @@ fn Header(cx: Scope<HeaderProps>) -> Element {
                         dur.num_minutes(),
                         dur.num_seconds() % 60
                     ));
-                    gloo_timers::future::sleep(Duration::from_secs(1)).await;
+                    gloo_timers::future::sleep(Duration::from_millis(100)).await;
                 }
-                countdown_text.set(String::new());
+                countdown_text.set("Time is up!".to_string());
             }
         }
     });

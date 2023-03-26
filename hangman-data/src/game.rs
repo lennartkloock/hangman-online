@@ -162,7 +162,6 @@ pub struct GameSettings {
 pub enum GameState {
     Playing,
     RoundFinished,
-    Finished,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
