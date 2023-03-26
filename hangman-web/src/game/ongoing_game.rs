@@ -15,11 +15,7 @@ use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
 use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, GameState, User};
 use log::error;
-use std::{
-    alloc::System,
-    rc::Rc,
-    time::{Duration, Instant, SystemTime},
-};
+use std::{rc::Rc, time::Duration};
 use thiserror::Error;
 
 mod game_logic;
@@ -122,7 +118,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             word,
             countdown,
         }) => cx.render(rsx!(
-            Header { code: *code, settings: settings.clone(), countdown: countdown.clone() }
+            Header { code: *code, settings: settings.clone(), countdown: *countdown }
             div {
                 class: "h-full flex items-center",
                 div {
@@ -222,7 +218,7 @@ fn Header(cx: Scope<HeaderProps>) -> Element {
             if let Some(date_time) = countdown {
                 while let Some(dur) = {
                     let dur = date_time - Utc::now();
-                    (dur > chrono::Duration::zero()).then(|| dur)
+                    (dur > chrono::Duration::zero()).then_some(dur)
                 } {
                     countdown_text.set(format!(
                         "{:0>2}:{:0>2}", //Keep leading zeros
