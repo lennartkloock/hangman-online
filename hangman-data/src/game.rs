@@ -1,4 +1,5 @@
 use crate::ChatMessage;
+use chrono::Utc;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -7,7 +8,6 @@ use std::{
     num::ParseIntError,
     str::FromStr,
 };
-use chrono::Utc;
 use thiserror::Error;
 
 /// Two bytes that represent a game code
@@ -59,10 +59,7 @@ pub enum GameMode {
 
 impl GameMode {
     pub fn all() -> Vec<Self> {
-        vec![
-            GameMode::Team,
-            GameMode::Competitive,
-        ]
+        vec![GameMode::Team, GameMode::Competitive]
     }
 }
 

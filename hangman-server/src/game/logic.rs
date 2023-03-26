@@ -1,13 +1,13 @@
 //! Game logic
 
+use crate::sender_utils::send_to_all;
+use hangman_data::{ChatMessage, ClientMessage, ServerMessage, User, UserToken};
 use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
     sync::Arc,
 };
 use tokio::sync::{mpsc, RwLock};
-use hangman_data::{ChatMessage, ClientMessage, ServerMessage, User, UserToken};
-use crate::sender_utils::send_to_all;
 
 pub mod competitive;
 pub mod team;

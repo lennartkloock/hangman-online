@@ -11,8 +11,8 @@ use hangman_data::{
     ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
     UserToken,
 };
-use std::{collections::HashMap, sync::Arc};
 use once_cell::sync::Lazy;
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, info, warn};
 
@@ -43,7 +43,12 @@ pub async fn game_loop(
     let players_c = Arc::clone(&players);
     let player_states_c = Arc::clone(&player_states);
     tokio::spawn(async move {
-        tokio::time::sleep(GAME_DURATION.to_std().expect("failed to convert chrono duration to std duration")).await;
+        tokio::time::sleep(
+            GAME_DURATION
+                .to_std()
+                .expect("failed to convert chrono duration to std duration"),
+        )
+        .await;
         let mut results = vec![];
         for (token, state) in player_states_c.read().await.iter() {
             // Only include players that are still connected
