@@ -14,7 +14,7 @@ Cargo.lock
 
 # Generated files
 dist/
-public/
+tw-out.css
 
 # JetBrains IDEs
 .idea/
