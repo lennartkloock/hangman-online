@@ -28,7 +28,7 @@ pub fn Form<'a>(cx: Scope<'a, FormProps<'a>>) -> Element<'a> {
 }
 
 #[inline_props]
-pub fn FormTopBar<'a>(cx: Scope<'a>, children: Element<'a>) -> Element<'a> {
+pub fn TopBar<'a>(cx: Scope<'a>, children: Element<'a>) -> Element<'a> {
     cx.render(rsx!(div {
         class: "bg-zinc-700 rounded-t-xl p-2 flex justify-between items-center",
         children

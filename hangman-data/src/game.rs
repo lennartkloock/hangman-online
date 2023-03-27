@@ -1,4 +1,5 @@
 use crate::ChatMessage;
+use chrono::Utc;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -48,9 +49,34 @@ impl Display for GameCode {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum GameMode {
+    #[default]
+    Team,
+    Competitive,
+}
+
+impl GameMode {
+    pub fn all() -> Vec<Self> {
+        vec![GameMode::Team, GameMode::Competitive]
+    }
+}
+
+impl Display for GameMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mode = match self {
+            GameMode::Team => "Team",
+            GameMode::Competitive => "Competitive",
+        };
+        write!(f, "{}", mode)
+    }
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum GameLanguage {
+    #[default]
     English,
     Spanish,
     French,
@@ -122,27 +148,41 @@ impl Display for Difficulty {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GameSettings {
+    pub mode: GameMode,
     pub language: GameLanguage,
     pub difficulty: Difficulty,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum GameState {
     Playing,
-    Solved,
-    OutOfTries,
+    RoundFinished,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct Score {
+    pub rank: u32,
+    pub nickname: String,
+    pub score: u32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Game {
-    pub settings: GameSettings,
-    pub state: GameState,
-    pub players: Vec<String>,
-    pub chat: Vec<ChatMessage>,
-    pub tries_used: u32,
-    pub word: String,
+#[serde(rename_all = "snake_case", tag = "type", content = "data")]
+pub enum Game {
+    InProgress {
+        settings: GameSettings,
+        state: GameState,
+        players: Vec<String>,
+        chat: Vec<ChatMessage>,
+        tries_used: u32,
+        word: String,
+        countdown: Option<chrono::DateTime<Utc>>,
+    },
+    Results(Vec<Score>),
 }
 
 #[cfg(test)]

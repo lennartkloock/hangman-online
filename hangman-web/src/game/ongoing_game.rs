@@ -1,12 +1,13 @@
 use crate::{
     components::{CenterContainer, MaterialButton, RcError},
     game::{
-        ongoing_game::{hangman::Hangman, ws_logic::connect},
+        ongoing_game::{hangman::Hangman, scoreboard::Scoreboard, ws_logic::connect},
         GameCode,
     },
     urls,
     urls::UrlError,
 };
+use chrono::Utc;
 use dioxus::prelude::*;
 use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
@@ -14,11 +15,12 @@ use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
 use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, GameState, User};
 use log::error;
-use std::rc::Rc;
+use std::{rc::Rc, time::Duration};
 use thiserror::Error;
 
 mod game_logic;
 mod hangman;
+mod scoreboard;
 mod ws_logic;
 
 #[derive(Debug, Error)]
@@ -107,15 +109,16 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: Rc::clone(e),
             }))
         }
-        ClientState::Joined(Game {
+        ClientState::Joined(Game::InProgress {
             settings,
             state,
             players,
             chat,
             tries_used,
             word,
+            countdown,
         }) => cx.render(rsx!(
-            Header { code: code, settings: settings.clone() }
+            Header { code: *code, settings: settings.clone(), countdown: *countdown }
             div {
                 class: "h-full flex items-center",
                 div {
@@ -166,13 +169,27 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                     Hangman { tries_used: *tries_used }
                 }
             }
-            Footer { game_state: state.clone(), ws_write: ws_write }
+            Footer { show_next_round: *state == GameState::RoundFinished, ws_write: ws_write }
+        )),
+        ClientState::Joined(Game::Results(results)) => cx.render(rsx!(
+            Header { code: *code, countdown: None }
+            CenterContainer {
+                Scoreboard { scores: results.clone() }
+            }
+            Footer { show_next_round: true, ws_write: ws_write }
         )),
     })
 }
 
-#[inline_props]
-fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Element<'a> {
+#[derive(PartialEq, Props)]
+struct HeaderProps {
+    code: GameCode,
+    settings: Option<GameSettings>,
+    #[props(!optional)]
+    countdown: Option<chrono::DateTime<Utc>>,
+}
+
+fn Header(cx: Scope<HeaderProps>) -> Element {
     let router = use_router(cx);
 
     let on_copy = move |_| {
@@ -181,7 +198,7 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
         match web_sys::window().and_then(|w| w.navigator().clipboard()) {
             Some(c) => {
                 let mut url = router.current_location().url.clone();
-                url.set_path(&format!("/game/{code}"));
+                url.set_path(&format!("/game/{}", cx.props.code));
                 cx.spawn(async move {
                     if let Err(e) =
                         wasm_bindgen_futures::JsFuture::from(c.write_text(url.as_str())).await
@@ -196,22 +213,55 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
         }
     };
 
-    let lang = &settings.language;
+    let countdown_text = use_state(cx, || "".to_string());
 
-    cx.render(rsx!(
-        div {
-            class: "absolute top-2 left-2 flex items-center gap-1 p-1",
-            span { class: "font-mono text-xl", "{code}" }
-            MaterialButton { name: "content_copy", onclick: on_copy }
+    use_coroutine(cx, |_: UnboundedReceiver<()>| {
+        to_owned![countdown_text];
+        let countdown = cx.props.countdown;
+        async move {
+            if let Some(date_time) = countdown {
+                while let Some(dur) = {
+                    let dur = date_time - Utc::now();
+                    (dur > chrono::Duration::zero()).then_some(dur)
+                } {
+                    countdown_text.set(format!(
+                        "{:0>2}:{:0>2}", //Keep leading zeros
+                        dur.num_minutes(),
+                        dur.num_seconds() % 60
+                    ));
+                    gloo_timers::future::sleep(Duration::from_millis(100)).await;
+                }
+                countdown_text.set("Time is up!".to_string());
+            }
         }
-        div {
-            class: "absolute top-2 right-2 flex items-center gap-1",
+    });
+
+    let lang_button = cx.props.settings.as_ref().map(|s| {
+        cx.render(rsx!(
             button {
                 class: "material-button gap-1 bg-zinc-700",
                 MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
-                span { "{lang}" }
+                span { "{s.language}" }
             }
-            MaterialButton { name: "settings" }
+        ))
+    });
+
+    cx.render(rsx!(
+        div {
+            class: "absolute top-2 left-2 right-2 flex justify-between",
+            div {
+                class: "flex items-center gap-1 p-1",
+                span { class: "font-mono text-xl", "{cx.props.code}" }
+                MaterialButton { name: "content_copy", onclick: on_copy }
+            }
+            div {
+                class: "font-mono text-2xl p-1",
+                "{countdown_text}"
+            }
+            div {
+                class: "flex items-center gap-1",
+                lang_button
+            }
         }
     ))
 }
@@ -219,10 +269,10 @@ fn Header<'a>(cx: Scope<'a>, code: &'a GameCode, settings: GameSettings) -> Elem
 #[inline_props]
 fn Footer<'a>(
     cx: Scope<'a>,
-    game_state: GameState,
+    show_next_round: bool,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let button = (*game_state != GameState::Playing).then(|| {
+    let button = show_next_round.then(|| {
         cx.render(rsx!(
             button {
                 class: "base-button ring-zinc-500 py-1",

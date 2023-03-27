@@ -1,10 +1,22 @@
 use crate::config::HangmanConfig;
-use hangman_data::{Difficulty, GameLanguage};
+use hangman_data::{Difficulty, GameLanguage, GameSettings};
+use once_cell::sync::OnceCell;
 use rand::Rng;
 use std::{collections::HashMap, path::PathBuf};
 use thiserror::Error;
 use tokio::{fs, io};
 use tracing::{debug, info};
+
+pub static GENERATOR: OnceCell<WordGenerator> = OnceCell::new();
+
+pub async fn generate_word(settings: &GameSettings) -> String {
+    GENERATOR
+        .get()
+        .expect("generator not initialized")
+        .generate(&settings.language, &settings.difficulty)
+        .await
+        .expect("failed to generate word")
+}
 
 #[derive(Debug)]
 pub struct WordGenerator {

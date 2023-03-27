@@ -1,3 +1,5 @@
+//! TODO: This protocol is pretty shit when supporting multiple game modes
+
 use crate::{Game, GameState};
 use serde::{Deserialize, Serialize};
 

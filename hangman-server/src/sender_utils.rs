@@ -25,29 +25,20 @@ impl<Item: Send> LogSend<Item> for mpsc::Sender<Item> {
     }
 }
 
-#[async_trait]
-pub trait SendToAll<M> {
-    async fn send_to_all(self, msg: M);
-}
-
-#[async_trait]
-impl<'a, M, I> SendToAll<M> for I
-where
-    M: Debug + Clone + Send + 'static,
-    I: Iterator<Item = &'a mpsc::Sender<M>> + Send,
-{
-    async fn send_to_all(self, msg: M) {
-        debug!("sending {msg:?} to all");
-        let mut futs: FuturesUnordered<_> = self
-            .map(|s| {
-                let msg = msg.clone();
-                async {
-                    if let Err(e) = s.send(msg).await {
-                        debug!("failed to send message to socket: {e}");
-                    }
+pub async fn send_to_all<'a, I: Iterator<Item = &'a mpsc::Sender<M>>, M: Debug + Clone + 'a>(
+    iter: I,
+    msg: M,
+) {
+    debug!("sending {msg:?} to all");
+    let mut futs: FuturesUnordered<_> = iter
+        .map(|s| {
+            let msg = msg.clone();
+            async {
+                if let Err(e) = s.send(msg).await {
+                    debug!("failed to send message to socket: {e}");
                 }
-            })
-            .collect();
-        while (futs.next().await).is_some() {}
-    }
+            }
+        })
+        .collect();
+    while (futs.next().await).is_some() {}
 }
