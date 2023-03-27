@@ -1,7 +1,7 @@
 use crate::{
     components::{CenterContainer, MaterialButton, RcError},
     game::{
-        ongoing_game::{hangman::Hangman, ws_logic::connect},
+        ongoing_game::{hangman::Hangman, scoreboard::Scoreboard, ws_logic::connect},
         GameCode,
     },
     urls,
@@ -17,7 +17,6 @@ use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, Ga
 use log::error;
 use std::{rc::Rc, time::Duration};
 use thiserror::Error;
-use crate::game::ongoing_game::scoreboard::Scoreboard;
 
 mod game_logic;
 mod hangman;
@@ -236,13 +235,15 @@ fn Header(cx: Scope<HeaderProps>) -> Element {
         }
     });
 
-    let lang_button = cx.props.settings.as_ref().map(|s| cx.render(rsx!(
-        button {
-            class: "material-button gap-1 bg-zinc-700",
-            MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
-            span { "{s.language}" }
-        }
-    )));
+    let lang_button = cx.props.settings.as_ref().map(|s| {
+        cx.render(rsx!(
+            button {
+                class: "material-button gap-1 bg-zinc-700",
+                MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
+                span { "{s.language}" }
+            }
+        ))
+    });
 
     cx.render(rsx!(
         div {

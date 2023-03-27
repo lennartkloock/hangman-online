@@ -1,5 +1,5 @@
 use crate::{
-    components::{CenterContainer, Error, Form, TopBar, MaterialButton, MaterialLinkButton},
+    components::{CenterContainer, Error, Form, MaterialButton, MaterialLinkButton, TopBar},
     global_state::USER,
     storage,
 };

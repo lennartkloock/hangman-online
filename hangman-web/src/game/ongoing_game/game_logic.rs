@@ -14,9 +14,15 @@ pub fn handle_message(msg: ServerMessage, state: &UseRef<ClientState>) {
                 warn!("received update message before init");
             }
         }),
-        ServerMessage::UpdateGame { word: w, tries_used: t } => state.with_mut(|s| {
+        ServerMessage::UpdateGame {
+            word: w,
+            tries_used: t,
+        } => state.with_mut(|s| {
             info!("new guess: {w}");
-            if let ClientState::Joined(Game::InProgress { word, tries_used, .. }) = s {
+            if let ClientState::Joined(Game::InProgress {
+                word, tries_used, ..
+            }) = s
+            {
                 *word = w;
                 *tries_used = t;
             } else {

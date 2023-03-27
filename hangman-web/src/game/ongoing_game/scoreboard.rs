@@ -1,6 +1,6 @@
+use crate::components::TopBar;
 use dioxus::prelude::*;
 use hangman_data::Score;
-use crate::components::TopBar;
 
 #[inline_props]
 pub fn Scoreboard(cx: Scope, scores: Vec<Score>) -> Element {
