@@ -27,6 +27,48 @@ struct PlayerState {
     pub score: u32,
 }
 
+async fn round_countdown(
+    code: GameCode,
+    players: Arc<RwLock<Players>>,
+    player_states: Arc<RwLock<HashMap<UserToken, PlayerState>>>,
+    results: Arc<Mutex<Option<Vec<Score>>>>,
+) {
+    tokio::time::sleep(
+        GAME_DURATION
+            .to_std()
+            .expect("failed to convert chrono duration to std duration"),
+    )
+    .await;
+    info!("[{code}] game round finished");
+
+    let players_guard = players.read().await;
+    let states_guard = player_states.read().await;
+    let mut sorted_states: Vec<(&User, &PlayerState)> = states_guard
+        .iter()
+        .filter_map(|(token, state)| players_guard.get(token).map(|(_, user)| (user, state)))
+        .collect();
+    sorted_states.sort_by_key(|(_, s)| s.score);
+
+    let mut scores = vec![];
+    let mut rank = 0;
+    let mut current_score = None;
+    for (user, state) in sorted_states.iter().rev() {
+        if current_score.map_or(true, |cs| state.score < cs) {
+            rank += 1;
+        }
+        scores.push(Score {
+            rank,
+            nickname: user.nickname.clone(),
+            score: state.score,
+        });
+        current_score = Some(state.score);
+    }
+    *results.lock().await = Some(scores.clone());
+    players_guard
+        .send_to_all(ServerMessage::Init(Game::Results(scores)))
+        .await;
+}
+
 pub async fn game_loop(
     mut rx: mpsc::Receiver<GameMessage>,
     code: GameCode,
@@ -38,47 +80,15 @@ pub async fn game_loop(
         Arc::new(RwLock::new(HashMap::new()));
     let mut global_chat = Chat::new(Arc::clone(&players));
     let mut words = vec![Word::new(word_generator::generate_word(&settings).await)];
-    let countdown = chrono::Utc::now() + *GAME_DURATION;
+    let mut countdown = chrono::Utc::now() + *GAME_DURATION;
     let results = Arc::new(Mutex::new(None));
 
-    let players_c = Arc::clone(&players);
-    let player_states_c = Arc::clone(&player_states);
-    let results_c = Arc::clone(&results);
-    tokio::spawn(async move {
-        tokio::time::sleep(
-            GAME_DURATION
-                .to_std()
-                .expect("failed to convert chrono duration to std duration"),
-        )
-        .await;
-
-        let players_guard = players_c.read().await;
-        let states_guard = player_states_c.read().await;
-        let mut scores: Vec<(&User, &PlayerState)> = states_guard
-            .iter()
-            .filter_map(|(token, state)| players_guard.get(token).map(|(_, user)| (user, state)))
-            .collect();
-        scores.sort_by_key(|(_, s)| s.score);
-
-        let mut results = vec![];
-        let mut rank = 0;
-        let mut current_score = None;
-        for (user, state) in scores.iter().rev() {
-            if current_score.map_or(true, |cs| state.score < cs) {
-                rank += 1;
-            }
-            results.push(Score {
-                rank,
-                nickname: user.nickname.clone(),
-                score: state.score,
-            });
-            current_score = Some(state.score);
-        }
-        *results_c.lock().await = Some(results.clone());
-        players_guard
-            .send_to_all(ServerMessage::Init(Game::Results(results)))
-            .await;
-    });
+    tokio::spawn(round_countdown(
+        code,
+        Arc::clone(&players),
+        Arc::clone(&player_states),
+        Arc::clone(&results),
+    ));
 
     while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
@@ -241,7 +251,43 @@ pub async fn game_loop(
                             }
                         }
                         ClientMessage::NextRound => {
-                            warn!("next round not implemented for competitive");
+                            info!("[{code}] {} started a new round", user.nickname);
+                            let new_round_msg = ChatMessage {
+                                content: format!("{} started a new round", user.nickname),
+                                ..Default::default()
+                            };
+                            global_chat.messages = vec![new_round_msg];
+                            words = vec![Word::new(word_generator::generate_word(&settings).await)];
+                            countdown = chrono::Utc::now() + *GAME_DURATION;
+                            *results.lock().await = None;
+                            for p in player_states.write().await.values_mut() {
+                                *p = PlayerState {
+                                    state: GameState::Playing,
+                                    tries_used: 0,
+                                    chat: global_chat.clone(),
+                                    word: words[0].clone(),
+                                    word_index: 0,
+                                    score: 0,
+                                };
+                            }
+                            let guard = players.read().await;
+                            guard
+                                .send_to_all(ServerMessage::Init(Game::InProgress {
+                                    settings: settings.clone(),
+                                    state: GameState::Playing,
+                                    players: guard.player_names(),
+                                    chat: global_chat.messages.clone(),
+                                    tries_used: 0,
+                                    word: words[0].word(),
+                                    countdown: Some(countdown),
+                                }))
+                                .await;
+                            tokio::spawn(round_countdown(
+                                code,
+                                Arc::clone(&players),
+                                Arc::clone(&player_states),
+                                Arc::clone(&results),
+                            ));
                         }
                     }
                 } else {

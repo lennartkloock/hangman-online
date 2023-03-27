@@ -169,13 +169,14 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                     Hangman { tries_used: *tries_used }
                 }
             }
-            Footer { game_state: state.clone(), ws_write: ws_write }
+            Footer { show_next_round: *state == GameState::RoundFinished, ws_write: ws_write }
         )),
         ClientState::Joined(Game::Results(results)) => cx.render(rsx!(
             Header { code: *code, countdown: None }
             CenterContainer {
                 Scoreboard { scores: results.clone() }
             }
+            Footer { show_next_round: true, ws_write: ws_write }
         )),
     })
 }
@@ -268,10 +269,10 @@ fn Header(cx: Scope<HeaderProps>) -> Element {
 #[inline_props]
 fn Footer<'a>(
     cx: Scope<'a>,
-    game_state: GameState,
+    show_next_round: bool,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let button = (*game_state == GameState::RoundFinished).then(|| {
+    let button = show_next_round.then(|| {
         cx.render(rsx!(
             button {
                 class: "base-button ring-zinc-500 py-1",
