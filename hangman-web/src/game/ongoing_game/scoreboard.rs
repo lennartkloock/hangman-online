@@ -22,7 +22,7 @@ pub fn Scoreboard(cx: Scope, scores: Vec<Score>) -> Element {
                     scores.get(2).map(|score| rsx!(Podium { score: score }))
                 }
                 div {
-                    class: "flex justify-evenly mt-4",
+                    class: "flex justify-evenly",
                     scores.get(3).map(|score| rsx!(ShortPodium { score: score }))
                     scores.get(4).map(|score| rsx!(ShortPodium { score: score }))
                 }
@@ -70,7 +70,7 @@ fn Podium<'a>(cx: Scope<'a>, score: &'a Score) -> Element<'a> {
 fn ShortPodium<'a>(cx: Scope<'a>, score: &'a Score) -> Element<'a> {
     cx.render(rsx!(
         p {
-            class: "text-xl",
+            class: "text-xl mt-4",
             span {
                 class: "font-bold",
                 "{score.rank}. "
