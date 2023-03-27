@@ -17,9 +17,11 @@ use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, Ga
 use log::error;
 use std::{rc::Rc, time::Duration};
 use thiserror::Error;
+use crate::game::ongoing_game::scoreboard::Scoreboard;
 
 mod game_logic;
 mod hangman;
+mod scoreboard;
 mod ws_logic;
 
 #[derive(Debug, Error)]
@@ -58,7 +60,6 @@ pub enum ClientState {
     /// waiting for connection and init message
     Loading,
     Joined(Game),
-    GameResult(Vec<(String, u32)>),
     /// Rc to make it cloneable
     Error(Rc<ConnectionError>),
 }
@@ -109,7 +110,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: Rc::clone(e),
             }))
         }
-        ClientState::Joined(Game {
+        ClientState::Joined(Game::InProgress {
             settings,
             state,
             players,
@@ -171,8 +172,11 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             }
             Footer { game_state: state.clone(), ws_write: ws_write }
         )),
-        ClientState::GameResult(results) => cx.render(rsx!(
-            p { "{results:?}" }
+        ClientState::Joined(Game::Results(results)) => cx.render(rsx!(
+            Header { code: *code, countdown: None }
+            CenterContainer {
+                Scoreboard { scores: results.clone() }
+            }
         )),
     })
 }
@@ -180,7 +184,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
 #[derive(PartialEq, Props)]
 struct HeaderProps {
     code: GameCode,
-    settings: GameSettings,
+    settings: Option<GameSettings>,
     #[props(!optional)]
     countdown: Option<chrono::DateTime<Utc>>,
 }
@@ -232,7 +236,13 @@ fn Header(cx: Scope<HeaderProps>) -> Element {
         }
     });
 
-    let lang = &cx.props.settings.language;
+    let lang_button = cx.props.settings.as_ref().map(|s| cx.render(rsx!(
+        button {
+            class: "material-button gap-1 bg-zinc-700",
+            MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
+            span { "{s.language}" }
+        }
+    )));
 
     cx.render(rsx!(
         div {
@@ -248,12 +258,7 @@ fn Header(cx: Scope<HeaderProps>) -> Element {
             }
             div {
                 class: "flex items-center gap-1",
-                button {
-                    class: "material-button gap-1 bg-zinc-700",
-                    MaterialIcon { name: "language", color: MaterialIconColor::Light, size: 35 }
-                    span { "{lang}" }
-                }
-                MaterialButton { name: "settings" }
+                lang_button
             }
         }
     ))

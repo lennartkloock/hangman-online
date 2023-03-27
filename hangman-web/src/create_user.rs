@@ -1,5 +1,5 @@
 use crate::{
-    components::{CenterContainer, Error, Form, FormTopBar, MaterialButton, MaterialLinkButton},
+    components::{CenterContainer, Error, Form, TopBar, MaterialButton, MaterialLinkButton},
     global_state::USER,
     storage,
 };
@@ -33,7 +33,7 @@ pub fn CreateUser(cx: Scope) -> Element {
                         error!("Failed to parse nickname form field");
                     }
                 },
-                FormTopBar {
+                TopBar {
                     MaterialLinkButton { name: "arrow_back", to: "/" }
                     span {
                         class: "font-light",

@@ -1,5 +1,5 @@
 use crate::{
-    components::{CenterContainer, Error, Form, FormTopBar, MaterialButton, MaterialLinkButton},
+    components::{CenterContainer, Error, Form, TopBar, MaterialButton, MaterialLinkButton},
     create_user::CreateUser,
     global_state::USER,
     urls,
@@ -69,7 +69,7 @@ pub fn CreateGame(cx: Scope) -> Element {
                                 error.set(Some(CreateGameError::FormParseError));
                             }
                         },
-                        FormTopBar {
+                        TopBar {
                             MaterialLinkButton { name: "arrow_back", to: "/" }
                             span {
                                 class: "font-light",

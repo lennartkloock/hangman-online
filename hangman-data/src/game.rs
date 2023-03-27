@@ -156,20 +156,33 @@ pub struct GameSettings {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum GameState {
     Playing,
     RoundFinished,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct Score {
+    pub rank: u32,
+    pub nickname: String,
+    pub score: u32,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Game {
-    pub settings: GameSettings,
-    pub state: GameState,
-    pub players: Vec<String>,
-    pub chat: Vec<ChatMessage>,
-    pub tries_used: u32,
-    pub word: String,
-    pub countdown: Option<chrono::DateTime<Utc>>,
+#[serde(rename_all = "snake_case", tag = "type", content = "data")]
+pub enum Game {
+    InProgress {
+        settings: GameSettings,
+        state: GameState,
+        players: Vec<String>,
+        chat: Vec<ChatMessage>,
+        tries_used: u32,
+        word: String,
+        countdown: Option<chrono::DateTime<Utc>>,
+    },
+    Results(Vec<Score>),
 }
 
 #[cfg(test)]

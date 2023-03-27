@@ -36,7 +36,7 @@ pub async fn game_loop(
                 players.write().await.add_player(sender.clone(), user).await;
 
                 sender
-                    .log_send(ServerMessage::Init(Game {
+                    .log_send(ServerMessage::Init(Game::InProgress {
                         settings: settings.clone(),
                         state: state.clone(),
                         players: players.read().await.player_names(),
@@ -133,7 +133,7 @@ pub async fn game_loop(
                             players
                                 .read()
                                 .await
-                                .send_to_all(ServerMessage::Init(Game {
+                                .send_to_all(ServerMessage::Init(Game::InProgress {
                                     settings: settings.clone(),
                                     state: state.clone(),
                                     players: players.read().await.player_names(),

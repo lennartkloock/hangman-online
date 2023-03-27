@@ -8,15 +8,15 @@ use crate::{
     word_generator,
 };
 use hangman_data::{
-    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, ServerMessage,
-    UserToken,
+    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, GameState, Score,
+    ServerMessage, User, UserToken,
 };
 use once_cell::sync::Lazy;
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing::{debug, info, warn};
 
-static GAME_DURATION: Lazy<chrono::Duration> = Lazy::new(|| chrono::Duration::minutes(2));
+static GAME_DURATION: Lazy<chrono::Duration> = Lazy::new(|| chrono::Duration::minutes(1));
 
 struct PlayerState {
     pub state: GameState,
@@ -39,9 +39,11 @@ pub async fn game_loop(
     let mut global_chat = Chat::new(Arc::clone(&players));
     let mut words = vec![Word::new(word_generator::generate_word(&settings).await)];
     let countdown = chrono::Utc::now() + *GAME_DURATION;
+    let results = Arc::new(Mutex::new(None));
 
     let players_c = Arc::clone(&players);
     let player_states_c = Arc::clone(&player_states);
+    let results_c = Arc::clone(&results);
     tokio::spawn(async move {
         tokio::time::sleep(
             GAME_DURATION
@@ -49,17 +51,32 @@ pub async fn game_loop(
                 .expect("failed to convert chrono duration to std duration"),
         )
         .await;
+
+        let players_guard = players_c.read().await;
+        let states_guard = player_states_c.read().await;
+        let mut scores: Vec<(&User, &PlayerState)> = states_guard
+            .iter()
+            .filter_map(|(token, state)| players_guard.get(token).map(|(_, user)| (user, state)))
+            .collect();
+        scores.sort_by_key(|(_, s)| s.score);
+
         let mut results = vec![];
-        for (token, state) in player_states_c.read().await.iter() {
-            // Only include players that are still connected
-            if let Some((_, user)) = players_c.read().await.get(token) {
-                results.push((user.nickname.clone(), state.score));
+        let mut rank = 0;
+        let mut current_score = None;
+        for (user, state) in scores.iter().rev() {
+            if current_score.map_or(true, |cs| state.score < cs) {
+                rank += 1;
             }
+            results.push(Score {
+                rank,
+                nickname: user.nickname.clone(),
+                score: state.score,
+            });
+            current_score = Some(state.score);
         }
-        players_c
-            .read()
-            .await
-            .send_to_all(ServerMessage::GameResult(results))
+        *results_c.lock().await = Some(results.clone());
+        players_guard
+            .send_to_all(ServerMessage::Init(Game::Results(results)))
             .await;
     });
 
@@ -93,17 +110,26 @@ pub async fn game_loop(
                     }
                 };
 
-                sender
-                    .log_send(ServerMessage::Init(Game {
-                        settings: settings.clone(),
-                        state: player_state.state.clone(),
-                        players: players.read().await.player_names(),
-                        chat: player_state.chat.clone(),
-                        tries_used: player_state.tries_used,
-                        word: player_state.word.word(),
-                        countdown: Some(countdown),
-                    }))
-                    .await;
+                match &*results.lock().await {
+                    None => {
+                        sender
+                            .log_send(ServerMessage::Init(Game::InProgress {
+                                settings: settings.clone(),
+                                state: player_state.state.clone(),
+                                players: players.read().await.player_names(),
+                                chat: player_state.chat.clone(),
+                                tries_used: player_state.tries_used,
+                                word: player_state.word.word(),
+                                countdown: Some(countdown),
+                            }))
+                            .await;
+                    }
+                    Some(r) => {
+                        sender
+                            .log_send(ServerMessage::Init(Game::Results(r.clone())))
+                            .await;
+                    }
+                }
 
                 let join_msg = join_message(&nickname);
                 for state in lock.values_mut() {
@@ -202,7 +228,7 @@ pub async fn game_loop(
                                     words.push(new_word);
                                 }
                                 sender
-                                    .log_send(ServerMessage::Init(Game {
+                                    .log_send(ServerMessage::Init(Game::InProgress {
                                         settings: settings.clone(),
                                         state: player_state.state.clone(),
                                         players: players.read().await.player_names(),
