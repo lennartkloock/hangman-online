@@ -10,6 +10,11 @@
 - [ ] Fix `Fixme` comments
 - [ ] Improve protocol
 - [ ] Optimizing for mobile
+- [ ] Competitive: Show guessed word
 
 ## Nice-to-have
 - [x] Different game modes
+
+### Competitive mode
+- [ ] Custom countdown time
+- [ ] Reduce timer when user guesses wrong
