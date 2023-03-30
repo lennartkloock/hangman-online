@@ -8,6 +8,7 @@
 - [x] Show the actual hangman
 - [ ] Fix `TODO` comments
 - [ ] Fix `Fixme` comments
+- [ ] Improve protocol
 
 ## Nice-to-have
-- [ ] Different game modes
+- [x] Different game modes
