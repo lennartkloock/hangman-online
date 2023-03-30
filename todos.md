@@ -9,6 +9,7 @@
 - [ ] Fix `TODO` comments
 - [ ] Fix `Fixme` comments
 - [ ] Improve protocol
+- [ ] Optimizing for mobile
 
 ## Nice-to-have
 - [x] Different game modes
