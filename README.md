@@ -1,4 +1,5 @@
-# Hangman Online
+# ![hangman-icon-small](https://user-images.githubusercontent.com/39778085/228966073-f59f3792-c0cb-4de2-a329-dfec0b47620b.png) Hangman Online
+
 
 Web-based multiplayer hangman game in multiple languages
 
