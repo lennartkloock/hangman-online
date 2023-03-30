@@ -12,6 +12,12 @@ Web-based multiplayer hangman game in multiple languages
 
 ## Screenshots
 
+> Title Screen
+![Title Screen](https://user-images.githubusercontent.com/39778085/228950639-0d98826c-7134-433c-a40c-a0483f2e48c4.png)
+
+> Game in Team mode
+![Game in Team mode](https://user-images.githubusercontent.com/39778085/228950498-dffd0e42-fa5f-4f54-b7d2-6d4e80a935bf.png)
+
 ## Contributing
 
 See the [`todos.md`](todos.md) file for things that need to be done.
