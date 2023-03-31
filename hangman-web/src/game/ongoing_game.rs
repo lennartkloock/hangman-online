@@ -336,6 +336,7 @@ fn Chat<'a>(
                 input {
                     class: "input w-full px-2 py-1 rounded-b-lg font-light",
                     r#type: "text",
+                    maxlength: 1,
                     name: "letter",
                     placeholder: "Guess something...",
                     disabled: *game_state != GameState::Playing,
