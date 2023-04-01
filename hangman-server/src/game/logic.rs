@@ -5,9 +5,8 @@ use hangman_data::{ChatMessage, ClientMessage, ServerMessage, User, UserToken};
 use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
-    sync::Arc,
 };
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::mpsc;
 
 pub mod competitive;
 pub mod team;

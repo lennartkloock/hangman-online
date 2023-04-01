@@ -107,19 +107,23 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: Rc::clone(e),
             }))
         }
-        ClientState::Joined(Game::Waiting { settings }) => cx.render(rsx!(
-            CenterContainer {
-                div {
-                    class: "flex flex-col gap-2",
-                    div { class: "race-by" }
-                    p {
-                        class: "text-2xl",
-                        "Waiting..."
+        ClientState::Joined(Game::Waiting { owner_hash, settings }) => {
+            let is_owner = *owner_hash == user.token.hashed();
+            cx.render(rsx!(
+                CenterContainer {
+                    div {
+                        class: "flex flex-col gap-2",
+                        div { class: "race-by" }
+                        p {
+                            class: "text-2xl",
+                            "Waiting..."
+                        }
                     }
                 }
-            }
-        )),
-        ClientState::Joined(Game::Started { settings, state }) => cx.render(rsx!(StartedGame {
+                Footer { show_next_round: is_owner, next_round_text: "Start Game", ws_write: ws_write }
+            ))
+        },
+        ClientState::Joined(Game::Started { settings, state, .. }) => cx.render(rsx!(StartedGame {
             code: *code,
             settings: settings.clone(),
             state: state.clone(),
@@ -130,6 +134,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             settings,
             state,
             results,
+            ..
         }) => match results {
             GameResults::Team => cx.render(rsx!(StartedGame {
                 code: *code,
@@ -315,6 +320,7 @@ fn Header(cx: Scope<HeaderProps>) -> Element {
 fn Footer<'a>(
     cx: Scope<'a>,
     show_next_round: bool,
+    next_round_text: Option<&'a str>,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
     let button = show_next_round.then(|| {
@@ -322,7 +328,7 @@ fn Footer<'a>(
             button {
                 class: "base-button ring-zinc-500 py-1",
                 onclick: move |_| ws_write.send(ClientMessage::NextRound),
-                "Next Round →"
+                next_round_text.unwrap_or("Next Round →")
             }
         ))
     });

@@ -6,6 +6,8 @@ use std::{
     num::ParseIntError,
     str::FromStr,
 };
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 #[derive(Copy, Clone, Debug, DeserializeFromStr, Eq, Hash, SerializeDisplay, PartialEq)]
 pub struct UserToken(u64);
@@ -13,6 +15,13 @@ pub struct UserToken(u64);
 impl UserToken {
     pub fn random() -> Self {
         Self(rand::thread_rng().gen())
+    }
+
+    pub fn hashed(&self) -> Self {
+        // TODO: Use faster hasher
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        Self (s.finish())
     }
 }
 

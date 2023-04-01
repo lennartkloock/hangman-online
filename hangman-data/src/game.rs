@@ -1,4 +1,4 @@
-use crate::ChatMessage;
+use crate::{ChatMessage, UserToken};
 use chrono::Utc;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -192,13 +192,16 @@ pub enum GameResults {
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]
 pub enum Game {
     Waiting {
+        owner_hash: UserToken,
         settings: GameSettings,
     },
     Started {
+        owner_hash: UserToken,
         settings: GameSettings,
         state: GameState,
     },
     RoundFinished {
+        owner_hash: UserToken,
         settings: GameSettings,
         state: GameState,
         results: GameResults,

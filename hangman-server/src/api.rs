@@ -15,7 +15,7 @@ use futures::{SinkExt, StreamExt};
 use hangman_data::{CreateGameBody, GameCode, User};
 use std::borrow::Cow;
 use tokio::sync::mpsc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, trace, warn};
 use tungstenite::Error;
 
 pub async fn create_game(
@@ -63,7 +63,7 @@ async fn handle_socket(
     let nick = user.nickname.clone();
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            debug!("sending {msg:?} to {}", nick);
+            trace!("sending {msg:?} to {}", nick);
             match serde_json::to_string(&msg) {
                 Ok(t) => {
                     if let Err(e) = sender.send(Message::Text(t)).await {

@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::{stream::FuturesUnordered, StreamExt};
 use std::fmt::Debug;
 use tokio::sync::{mpsc, mpsc::error::SendError};
-use tracing::debug;
+use tracing::{debug, trace};
 
 #[async_trait]
 pub trait LogSend<Item> {
@@ -29,7 +29,7 @@ pub async fn send_to_all<'a, I: Iterator<Item = &'a mpsc::Sender<M>>, M: Debug +
     iter: I,
     msg: M,
 ) {
-    debug!("sending {msg:?} to all");
+    trace!("sending {msg:?} to all");
     let mut futs: FuturesUnordered<_> = iter
         .map(|s| {
             let msg = msg.clone();
