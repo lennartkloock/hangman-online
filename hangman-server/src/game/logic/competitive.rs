@@ -17,7 +17,7 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing::{debug, info, warn};
 
-// TODO: This code is huge shit, too much duplication and too similar to team code
+// TODO: This code is shit, too much duplication and too similar to team code
 
 static GAME_DURATION: Lazy<chrono::Duration> = Lazy::new(|| chrono::Duration::minutes(3));
 

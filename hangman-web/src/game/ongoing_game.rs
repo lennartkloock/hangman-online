@@ -110,6 +110,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
         ClientState::Joined(Game::Waiting { owner_hash, settings }) => {
             let is_owner = *owner_hash == user.token.hashed();
             cx.render(rsx!(
+                Header { code: *code, settings: settings.clone(), countdown: None }
                 CenterContainer {
                     div {
                         class: "flex flex-col gap-2",
@@ -217,7 +218,6 @@ fn StartedGame<'a>(cx: Scope<'a>, code: GameCode, settings: GameSettings, state:
                 }
 
                 Chat {
-                    game_state: state.clone(),
                     chat: chat.clone(),
                     disabled: *show_next_round,
                     ws_write: ws_write
@@ -342,7 +342,6 @@ fn Footer<'a>(
 #[inline_props]
 fn Chat<'a>(
     cx: Scope<'a>,
-    game_state: GameState,
     chat: Vec<ChatMessage>,
     disabled: bool,
     ws_write: &'a Coroutine<ClientMessage>,
