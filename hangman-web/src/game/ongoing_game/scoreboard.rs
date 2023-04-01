@@ -4,6 +4,12 @@ use hangman_data::Score;
 
 #[inline_props]
 pub fn Scoreboard(cx: Scope, scores: Vec<Score>) -> Element {
+    let order = if scores.len() < 3 {
+        vec![0, 1]
+    } else {
+        vec![1, 0, 2]
+    };
+
     cx.render(rsx!(
         div {
             class: "bg-zinc-800 rounded-xl shadow-lg",
@@ -17,9 +23,7 @@ pub fn Scoreboard(cx: Scope, scores: Vec<Score>) -> Element {
                 class: "p-8",
                 div {
                     class: "flex gap-8 items-end",
-                    scores.get(1).map(|score| rsx!(Podium { score: score }))
-                    scores.get(0).map(|score| rsx!(Podium { score: score }))
-                    scores.get(2).map(|score| rsx!(Podium { score: score }))
+                    order.iter().map(|i| rsx!(scores.get(*i).map(|score| rsx!(Podium { score: score }))))
                 }
                 div {
                     class: "flex justify-evenly",
