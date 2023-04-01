@@ -49,9 +49,6 @@ impl Players {
     }
 
     pub async fn add_player(&mut self, tx: mpsc::Sender<ServerMessage>, user: User) {
-        let mut names = self.player_names();
-        names.push(user.nickname.clone());
-        self.send_to_all(ServerMessage::UpdatePlayers(names)).await;
         self.insert(user.token, (tx, user));
     }
 
@@ -59,12 +56,7 @@ impl Players {
         &mut self,
         token: &UserToken,
     ) -> Option<(mpsc::Sender<ServerMessage>, User)> {
-        let res = self.remove(token);
-        if res.is_some() {
-            self.send_to_all(ServerMessage::UpdatePlayers(self.player_names()))
-                .await;
-        }
-        res
+        self.remove(token)
     }
 
     pub async fn send_to_all(&self, msg: ServerMessage) {
@@ -90,39 +82,39 @@ impl DerefMut for Players {
     }
 }
 
-pub struct Chat {
-    players: Arc<RwLock<Players>>,
-    messages: Vec<ChatMessage>,
-}
-
-impl Chat {
-    pub fn new(players: Arc<RwLock<Players>>) -> Self {
-        Self {
-            players,
-            messages: vec![],
-        }
-    }
-
-    pub async fn send_message(&mut self, msg: ChatMessage) {
-        self.messages.push(msg.clone());
-        self.players
-            .read()
-            .await
-            .send_to_all(ServerMessage::ChatMessage(msg))
-            .await;
-    }
-}
-
-impl Deref for Chat {
-    type Target = Vec<ChatMessage>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.messages
-    }
-}
-
-impl DerefMut for Chat {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.messages
-    }
-}
+// pub struct Chat {
+//     players: Arc<RwLock<Players>>,
+//     messages: Vec<ChatMessage>,
+// }
+//
+// impl Chat {
+//     pub fn new(players: Arc<RwLock<Players>>) -> Self {
+//         Self {
+//             players,
+//             messages: vec![],
+//         }
+//     }
+//
+//     pub async fn send_message(&mut self, msg: ChatMessage) {
+//         self.messages.push(msg.clone());
+//         self.players
+//             .read()
+//             .await
+//             .send_to_all(ServerMessage::ChatMessage(msg))
+//             .await;
+//     }
+// }
+//
+// impl Deref for Chat {
+//     type Target = Vec<ChatMessage>;
+//
+//     fn deref(&self) -> &Self::Target {
+//         &self.messages
+//     }
+// }
+//
+// impl DerefMut for Chat {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.messages
+//     }
+// }

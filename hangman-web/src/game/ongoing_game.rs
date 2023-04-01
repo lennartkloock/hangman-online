@@ -13,7 +13,7 @@ use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameSettings, GameState, User};
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameResults, GameSettings, GameState, User};
 use log::error;
 use std::{rc::Rc, time::Duration};
 use thiserror::Error;
@@ -65,8 +65,6 @@ pub enum ClientState {
 
 #[inline_props]
 pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element<'a> {
-    let router = use_router(cx);
-
     let state = use_ref(cx, || ClientState::Loading);
 
     let (ws_tx, ws_rx) = cx.use_hook(|| match urls::game_ws_url(code, user) {
@@ -109,76 +107,123 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: Rc::clone(e),
             }))
         }
-        ClientState::Joined(Game::InProgress {
+        ClientState::Joined(Game::Waiting { settings }) => cx.render(rsx!(
+            CenterContainer {
+                div {
+                    class: "flex flex-col gap-2",
+                    div { class: "race-by" }
+                    p {
+                        class: "text-2xl",
+                        "Waiting..."
+                    }
+                }
+            }
+        )),
+        ClientState::Joined(Game::Started { settings, state }) => cx.render(rsx!(StartedGame {
+            code: *code,
+            settings: settings.clone(),
+            state: state.clone(),
+            show_next_round: false,
+            ws_write: ws_write,
+        })),
+        ClientState::Joined(Game::RoundFinished {
             settings,
             state,
+            results,
+        }) => match results {
+            GameResults::Team => cx.render(rsx!(StartedGame {
+                code: *code,
+                settings: settings.clone(),
+                state: state.clone(),
+                show_next_round: true,
+                ws_write: ws_write,
+            })),
+            GameResults::Competitive(scores) => cx.render(rsx!(
+                Header { code: *code, countdown: None }
+                CenterContainer {
+                    Scoreboard { scores: scores.clone() }
+                }
+                Footer { show_next_round: true, ws_write: ws_write }
+            )),
+        },
+    })
+}
+
+#[inline_props]
+fn StartedGame<'a>(cx: Scope<'a>, code: GameCode, settings: GameSettings, state: GameState, show_next_round: bool, ws_write: &'a Coroutine<ClientMessage>) -> Element<'a> {
+    let (players, chat, tries_used, word, countdown) = match state {
+        GameState::Team {
+            players,
+            chat,
+            tries_used,
+            word,
+        } => (players, chat, tries_used, word, None),
+        GameState::Competitive {
             players,
             chat,
             tries_used,
             word,
             countdown,
-        }) => cx.render(rsx!(
-            Header { code: *code, settings: settings.clone(), countdown: *countdown }
+        } => (players, chat, tries_used, word, Some(countdown)),
+    };
+
+    let router = use_router(cx);
+
+    cx.render(rsx!(
+        Header { code: *code, settings: settings.clone(), countdown: countdown.copied() }
+        div {
+            class: "h-full flex items-center",
             div {
-                class: "h-full flex items-center",
+                class: "grid game-container gap-y-2 w-full",
+
+                // Players
                 div {
-                    class: "grid game-container gap-y-2 w-full",
-
-                    // Players
-                    div {
-                        style: "grid-area: players",
-                        class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg flex flex-col",
-                        ul {
-                            class: "flex flex-col gap-2 grow",
-                            players
-                                .iter()
-                                .map(|p| rsx!(
-                                    li {
-                                        class: "flex items-center gap-1",
-                                        MaterialIcon { name: "account_circle", color: MaterialIconColor::Light, size: 30 }
-                                        "{p}"
-                                    }
-                                ))
-                        }
-                        button {
-                            class: "base-button hover:bg-red-700/70 ring-zinc-700/50",
-                            onclick: move |_| router.navigate_to("/"),
-                            "Leave"
-                        }
+                    style: "grid-area: players",
+                    class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg flex flex-col",
+                    ul {
+                        class: "flex flex-col gap-2 grow",
+                        players
+                            .iter()
+                            .map(|p| rsx!(
+                                li {
+                                    class: "flex items-center gap-1",
+                                    MaterialIcon { name: "account_circle", color: MaterialIconColor::Light, size: 30 }
+                                    "{p}"
+                                }
+                            ))
                     }
-
-                    // Word
-                    h1 {
-                        class: "text-xl font-light text-center",
-                        style: "grid-area: title",
-                        "GUESS THE WORD"
+                    button {
+                        class: "base-button hover:bg-red-700/70 ring-zinc-700/50",
+                        onclick: move |_| router.navigate_to("/"),
+                        "Leave"
                     }
-                    pre {
-                        class: "text-6xl font-mono tracking-[.25em] mr-[-.25em] text-center px-2",
-                        style: "grid-area: word",
-                        "{word}"
-                    }
-
-                    Chat {
-                        game_state: state.clone(),
-                        chat: chat.clone(),
-                        ws_write: ws_write
-                    }
-
-                    // Hangman
-                    Hangman { tries_used: *tries_used }
                 }
+
+                // Word
+                h1 {
+                    class: "text-xl font-light text-center",
+                    style: "grid-area: title",
+                    "GUESS THE WORD"
+                }
+                pre {
+                    class: "text-6xl font-mono tracking-[.25em] mr-[-.25em] text-center px-2",
+                    style: "grid-area: word",
+                    "{word}"
+                }
+
+                Chat {
+                    game_state: state.clone(),
+                    chat: chat.clone(),
+                    disabled: *show_next_round,
+                    ws_write: ws_write
+                }
+
+                // Hangman
+                Hangman { tries_used: *tries_used }
             }
-            Footer { show_next_round: *state == GameState::RoundFinished, ws_write: ws_write }
-        )),
-        ClientState::Joined(Game::Results(results)) => cx.render(rsx!(
-            Header { code: *code, countdown: None }
-            CenterContainer {
-                Scoreboard { scores: results.clone() }
-            }
-            Footer { show_next_round: true, ws_write: ws_write }
-        )),
-    })
+        }
+        Footer { show_next_round: *show_next_round, ws_write: ws_write }
+    ))
 }
 
 #[derive(PartialEq, Props)]
@@ -293,6 +338,7 @@ fn Chat<'a>(
     cx: Scope<'a>,
     game_state: GameState,
     chat: Vec<ChatMessage>,
+    disabled: bool,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
     let value = use_state(cx, String::new);
@@ -339,7 +385,7 @@ fn Chat<'a>(
                     maxlength: 1,
                     name: "letter",
                     placeholder: "Guess something...",
-                    disabled: *game_state != GameState::Playing,
+                    disabled: *disabled,
                     value: "{value}",
                     oninput: move |e| value.set(e.data.value.to_string()),
                 }

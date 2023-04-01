@@ -158,8 +158,19 @@ pub struct GameSettings {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum GameState {
-    Playing,
-    RoundFinished,
+    Team {
+        players: Vec<String>,
+        chat: Vec<ChatMessage>,
+        tries_used: u32,
+        word: String,
+    },
+    Competitive {
+        players: Vec<String>,
+        chat: Vec<ChatMessage>,
+        tries_used: u32,
+        word: String,
+        countdown: chrono::DateTime<Utc>,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -170,19 +181,28 @@ pub struct Score {
     pub score: u32,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum GameResults {
+    Team,
+    Competitive(Vec<Score>),
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]
 pub enum Game {
-    InProgress {
+    Waiting {
+        settings: GameSettings,
+    },
+    Started {
         settings: GameSettings,
         state: GameState,
-        players: Vec<String>,
-        chat: Vec<ChatMessage>,
-        tries_used: u32,
-        word: String,
-        countdown: Option<chrono::DateTime<Utc>>,
     },
-    Results(Vec<Score>),
+    RoundFinished {
+        settings: GameSettings,
+        state: GameState,
+        results: GameResults,
+    },
 }
 
 #[cfg(test)]

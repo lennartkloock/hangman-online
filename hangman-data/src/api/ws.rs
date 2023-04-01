@@ -1,6 +1,4 @@
-//! TODO: This protocol is pretty shit when supporting multiple game modes
-
-use crate::{Game, GameState};
+use crate::Game;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -10,7 +8,7 @@ pub enum ClientMessage {
     NextRound,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct ChatMessage {
     pub from: Option<String>,
@@ -18,7 +16,7 @@ pub struct ChatMessage {
     pub color: ChatColor,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ChatColor {
     Neutral,
@@ -35,9 +33,5 @@ impl Default for ChatColor {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]
 pub enum ServerMessage {
-    Init(Game),
-    UpdatePlayers(Vec<String>),
-    UpdateGame { word: String, tries_used: u32 },
-    ChatMessage(ChatMessage),
-    UpdateGameState(GameState),
+    UpdateGame(Game),
 }
