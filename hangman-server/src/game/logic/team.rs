@@ -6,7 +6,10 @@ use crate::{
     },
     word_generator,
 };
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameResults, GameSettings, GameState, ServerMessage, UserToken};
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameResults, GameSettings, GameState,
+    ServerMessage, UserToken,
+};
 use tokio::sync::mpsc;
 use tracing::{debug, info, log::warn};
 
@@ -22,7 +25,10 @@ pub async fn game_loop(
     let mut chat = vec![];
     let mut tries_used = 0;
     let mut word = Word::new(word_generator::generate_word(&settings).await);
-    let mut game = Game::Waiting { owner_hash: owner.hashed(), settings: settings.clone() };
+    let mut game = Game::Waiting {
+        owner_hash: owner.hashed(),
+        settings: settings.clone(),
+    };
 
     while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
@@ -44,7 +50,9 @@ pub async fn game_loop(
                         },
                     };
                 }
-                players.send_to_all(ServerMessage::UpdateGame(game.clone())).await;
+                players
+                    .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                    .await;
             }
             GameMessage::Leave(token) => {
                 let Some((_, user)) = players.remove_player(&token).await else {
@@ -67,7 +75,9 @@ pub async fn game_loop(
                         },
                     };
                 }
-                players.send_to_all(ServerMessage::UpdateGame(game.clone())).await;
+                players
+                    .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                    .await;
 
                 if players.is_empty() {
                     info!("[{code}] all players left the game, closing");
@@ -142,42 +152,17 @@ pub async fn game_loop(
                                         },
                                     };
                                 }
-                                players.send_to_all(ServerMessage::UpdateGame(game.clone())).await;
+                                players
+                                    .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                                    .await;
                             }
                         }
-                        ClientMessage::NextRound => {
-                            match game {
-                                Game::Waiting { .. } => {
-                                    if user.token == owner {
-                                        info!("[{code}] {} started the game", user.nickname);
-                                        chat.push(ChatMessage {
-                                            content: format!("{} started the game", user.nickname),
-                                            ..Default::default()
-                                        });
-                                        game = Game::Started {
-                                            settings: settings.clone(),
-                                            owner_hash: owner.hashed(),
-                                            state: GameState::Team {
-                                                players: players.player_names(),
-                                                chat: chat.clone(),
-                                                tries_used,
-                                                word: word.word(),
-                                            },
-                                        };
-                                        players.send_to_all(ServerMessage::UpdateGame(game.clone())).await;
-                                    } else {
-                                        warn!("{} tried to start the game, but is not owner", user.nickname);
-                                    }
-                                }
-                                Game::Started { .. } => {
-                                    warn!("can't start a new round when game is still `Started`");
-                                }
-                                Game::Finished { .. } => {
-                                    chat.retain(|m| m.from.is_none());
-                                    tries_used = 0;
-                                    word = Word::new(word_generator::generate_word(&settings).await);
+                        ClientMessage::NextRound => match game {
+                            Game::Waiting { .. } => {
+                                if user.token == owner {
+                                    info!("[{code}] {} started the game", user.nickname);
                                     chat.push(ChatMessage {
-                                        content: format!("{} started a new round", user.nickname),
+                                        content: format!("{} started the game", user.nickname),
                                         ..Default::default()
                                     });
                                     game = Game::Started {
@@ -190,11 +175,43 @@ pub async fn game_loop(
                                             word: word.word(),
                                         },
                                     };
-                                    players.send_to_all(ServerMessage::UpdateGame(game.clone())).await;
-                                    info!("[{code}] {} started next round", user.nickname);
+                                    players
+                                        .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                                        .await;
+                                } else {
+                                    warn!(
+                                        "{} tried to start the game, but is not owner",
+                                        user.nickname
+                                    );
                                 }
                             }
-                        }
+                            Game::Started { .. } => {
+                                warn!("can't start a new round when game is still `Started`");
+                            }
+                            Game::Finished { .. } => {
+                                chat.retain(|m| m.from.is_none());
+                                tries_used = 0;
+                                word = Word::new(word_generator::generate_word(&settings).await);
+                                chat.push(ChatMessage {
+                                    content: format!("{} started a new round", user.nickname),
+                                    ..Default::default()
+                                });
+                                game = Game::Started {
+                                    settings: settings.clone(),
+                                    owner_hash: owner.hashed(),
+                                    state: GameState::Team {
+                                        players: players.player_names(),
+                                        chat: chat.clone(),
+                                        tries_used,
+                                        word: word.word(),
+                                    },
+                                };
+                                players
+                                    .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                                    .await;
+                                info!("[{code}] {} started next round", user.nickname);
+                            }
+                        },
                     }
                 } else {
                     warn!("[{code}] there was no user in this game with this token");

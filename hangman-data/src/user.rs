@@ -2,12 +2,12 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{
+    collections::hash_map::DefaultHasher,
     fmt::{Display, Formatter},
+    hash::{Hash, Hasher},
     num::ParseIntError,
     str::FromStr,
 };
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 
 #[derive(Copy, Clone, Debug, DeserializeFromStr, Eq, Hash, SerializeDisplay, PartialEq)]
 pub struct UserToken(u64);
@@ -21,7 +21,7 @@ impl UserToken {
         // TODO: Use faster hasher
         let mut s = DefaultHasher::new();
         self.hash(&mut s);
-        Self (s.finish())
+        Self(s.finish())
     }
 }
 

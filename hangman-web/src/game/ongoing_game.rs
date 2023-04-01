@@ -13,7 +13,9 @@ use dioxus_material_icons::{MaterialIcon, MaterialIconColor};
 use dioxus_router::use_router;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameResults, GameSettings, GameState, User};
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, Game, GameResults, GameSettings, GameState, User,
+};
 use log::error;
 use std::{rc::Rc, time::Duration};
 use thiserror::Error;
@@ -156,7 +158,14 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
 }
 
 #[inline_props]
-fn StartedGame<'a>(cx: Scope<'a>, code: GameCode, settings: GameSettings, state: GameState, show_next_round: bool, ws_write: &'a Coroutine<ClientMessage>) -> Element<'a> {
+fn StartedGame<'a>(
+    cx: Scope<'a>,
+    code: GameCode,
+    settings: GameSettings,
+    state: GameState,
+    show_next_round: bool,
+    ws_write: &'a Coroutine<ClientMessage>,
+) -> Element<'a> {
     let (players, chat, tries_used, word, countdown) = match state {
         GameState::Team {
             players,
