@@ -10,6 +10,8 @@ use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameRe
 use tokio::sync::mpsc;
 use tracing::{debug, info, log::warn};
 
+// TODO: This code is shit, too much duplication and too similar to competitive code
+
 pub async fn game_loop(
     mut rx: mpsc::Receiver<GameMessage>,
     code: GameCode,
@@ -117,7 +119,7 @@ pub async fn game_loop(
                                             ..Default::default()
                                         });
                                     }
-                                    game = Game::RoundFinished {
+                                    game = Game::Finished {
                                         settings: settings.clone(),
                                         owner_hash: owner.hashed(),
                                         state: GameState::Team {
@@ -147,6 +149,7 @@ pub async fn game_loop(
                             match game {
                                 Game::Waiting { .. } => {
                                     if user.token == owner {
+                                        info!("[{code}] {} started the game", user.nickname);
                                         chat.push(ChatMessage {
                                             content: format!("{} started the game", user.nickname),
                                             ..Default::default()
@@ -169,7 +172,7 @@ pub async fn game_loop(
                                 Game::Started { .. } => {
                                     warn!("can't start a new round when game is still `Started`");
                                 }
-                                Game::RoundFinished { .. } => {
+                                Game::Finished { .. } => {
                                     chat.retain(|m| m.from.is_none());
                                     tries_used = 0;
                                     word = Word::new(word_generator::generate_word(&settings).await);

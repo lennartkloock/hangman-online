@@ -200,7 +200,7 @@ pub enum Game {
         settings: GameSettings,
         state: GameState,
     },
-    RoundFinished {
+    Finished {
         owner_hash: UserToken,
         settings: GameSettings,
         state: GameState,

@@ -130,7 +130,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
             show_next_round: false,
             ws_write: ws_write,
         })),
-        ClientState::Joined(Game::RoundFinished {
+        ClientState::Joined(Game::Finished {
             settings,
             state,
             results,
