@@ -1,6 +1,6 @@
-use std::fmt::Debug;
 use crate::{CompetitiveState, Game, Score, TeamState};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]

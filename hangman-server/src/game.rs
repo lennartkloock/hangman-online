@@ -25,18 +25,16 @@ impl GameManager {
         info!("new game: {}", code);
         let (tx, rx) = mpsc::channel(10);
         let games = Arc::clone(&self.games);
-        tokio::spawn(
-            async move {
-                match &settings.mode {
-                    GameMode::Team => logic::team::game_loop(rx, code, settings, owner).await,
-                    GameMode::Competitive => {
-                        logic::competitive::game_loop(rx, code, settings, owner).await
-                    }
+        tokio::spawn(async move {
+            match &settings.mode {
+                GameMode::Team => logic::team::game_loop(rx, code, settings, owner).await,
+                GameMode::Competitive => {
+                    logic::competitive::game_loop(rx, code, settings, owner).await
                 }
-                debug!("[{code}] game loop finished, removing game");
-                games.lock().await.remove(&code);
             }
-        );
+            debug!("[{code}] game loop finished, removing game");
+            games.lock().await.remove(&code);
+        });
         self.games.lock().await.insert(code, tx);
         code
     }

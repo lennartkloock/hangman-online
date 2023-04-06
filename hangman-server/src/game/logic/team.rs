@@ -6,7 +6,10 @@ use crate::{
     },
     word_generator,
 };
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, ServerMessage, ServerMessageInner, TeamState, UserToken};
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, ServerMessage,
+    ServerMessageInner, TeamState, UserToken,
+};
 use tokio::sync::mpsc;
 use tracing::{debug, info, log::warn};
 
@@ -27,8 +30,7 @@ pub async fn game_loop(
     };
     let mut finished = false;
 
-    'game_loop:
-    while let Some(msg) = rx.recv().await {
+    'game_loop: while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
         match msg {
             GameMessage::Join { user, sender } => {
@@ -42,7 +44,9 @@ pub async fn game_loop(
                     state.chat = chat.clone();
                 }
                 players
-                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
+                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(
+                        game.clone(),
+                    )))
                     .await;
             }
             GameMessage::Leave(token) => {
@@ -60,7 +64,9 @@ pub async fn game_loop(
                     state.chat = chat.clone();
                 }
                 players
-                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
+                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(
+                        game.clone(),
+                    )))
                     .await;
 
                 if players.is_empty() {
@@ -118,7 +124,9 @@ pub async fn game_loop(
                                 }
                                 state.chat = chat.clone();
                                 players
-                                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
+                                    .send_to_all(ServerMessage::Team(
+                                        ServerMessageInner::UpdateGame(game.clone()),
+                                    ))
                                     .await;
                             }
                         }
@@ -137,7 +145,9 @@ pub async fn game_loop(
                                         word: word.word(),
                                     });
                                     players
-                                        .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
+                                        .send_to_all(ServerMessage::Team(
+                                            ServerMessageInner::UpdateGame(game.clone()),
+                                        ))
                                         .await;
                                 } else {
                                     warn!(
@@ -145,7 +155,7 @@ pub async fn game_loop(
                                         user.nickname
                                     );
                                 }
-                            },
+                            }
                             Some(state) if finished => {
                                 finished = false;
                                 chat.retain(|m| m.from.is_none());
@@ -158,13 +168,15 @@ pub async fn game_loop(
                                 state.chat = chat.clone();
                                 state.word = word.word();
                                 players
-                                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
+                                    .send_to_all(ServerMessage::Team(
+                                        ServerMessageInner::UpdateGame(game.clone()),
+                                    ))
                                     .await;
                                 info!("[{code}] {} started next round", user.nickname);
-                            },
+                            }
                             Some(_) => {
                                 warn!("can't start a new round when game is still `Started`");
-                            },
+                            }
                         },
                     }
                 } else {

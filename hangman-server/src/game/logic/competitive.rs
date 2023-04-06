@@ -5,7 +5,10 @@ use once_cell::sync::Lazy;
 use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing::{debug, info, warn};
 
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, CompetitiveState, Game, GameCode, GameSettings, Score, ServerMessage, ServerMessageInner, User, UserToken};
+use hangman_data::{
+    ChatColor, ChatMessage, ClientMessage, CompetitiveState, Game, GameCode, GameSettings, Score,
+    ServerMessage, ServerMessageInner, User, UserToken,
+};
 
 use crate::{
     game::logic::{
@@ -80,7 +83,9 @@ async fn round_countdown(
     for (token, _) in states_guard.iter() {
         if let Some((sender, _)) = players_guard.get(token) {
             sender
-                .log_send(ServerMessage::Competitive(ServerMessageInner::Results(scores.clone())))
+                .log_send(ServerMessage::Competitive(ServerMessageInner::Results(
+                    scores.clone(),
+                )))
                 .await;
         }
     }
@@ -146,17 +151,23 @@ pub async fn game_loop(
                             state.chat.push(join_msg.clone());
                             if token != &user_token {
                                 if let Some((sender, _)) = players_guard.get(token) {
-                                    let message = ServerMessage::Competitive(ServerMessageInner::UpdateGame(Game {
-                                        state: countdown.map(|_| state.to_state()),
-                                        ..game.clone()
-                                    }));
+                                    let message = ServerMessage::Competitive(
+                                        ServerMessageInner::UpdateGame(Game {
+                                            state: countdown.map(|_| state.to_state()),
+                                            ..game.clone()
+                                        }),
+                                    );
                                     sender.log_send(message).await;
                                 }
                             }
                         }
                     }
                     Some(ref r) => {
-                        sender.log_send(ServerMessage::Competitive(ServerMessageInner::Results(r.clone()))).await;
+                        sender
+                            .log_send(ServerMessage::Competitive(ServerMessageInner::Results(
+                                r.clone(),
+                            )))
+                            .await;
                     }
                 }
             }
@@ -175,10 +186,11 @@ pub async fn game_loop(
                 for (token, state) in player_states.write().await.iter_mut() {
                     state.chat.push(leave_msg.clone());
                     if let Some((sender, _)) = guard.get(token) {
-                        let message = ServerMessage::Competitive(ServerMessageInner::UpdateGame(Game {
-                            state: countdown.map(|_| state.to_state()),
-                            ..game.clone()
-                        }));
+                        let message =
+                            ServerMessage::Competitive(ServerMessageInner::UpdateGame(Game {
+                                state: countdown.map(|_| state.to_state()),
+                                ..game.clone()
+                            }));
                         sender.log_send(message).await;
                     }
                 }
@@ -259,10 +271,12 @@ pub async fn game_loop(
                                 }
                             }
                             sender
-                                .log_send(ServerMessage::Competitive(ServerMessageInner::UpdateGame(Game {
-                                    state: Some(player_state.to_state()),
-                                    ..game.clone()
-                                })))
+                                .log_send(ServerMessage::Competitive(
+                                    ServerMessageInner::UpdateGame(Game {
+                                        state: Some(player_state.to_state()),
+                                        ..game.clone()
+                                    }),
+                                ))
                                 .await;
                         }
                         ClientMessage::NextRound => {
@@ -283,10 +297,12 @@ pub async fn game_loop(
                                         state.countdown = ctdwn;
                                         if let Some((sender, _)) = guard.get(token) {
                                             sender
-                                                .log_send(ServerMessage::Competitive(ServerMessageInner::UpdateGame(Game {
-                                                    state: Some(state.to_state()),
-                                                    ..game.clone()
-                                                })))
+                                                .log_send(ServerMessage::Competitive(
+                                                    ServerMessageInner::UpdateGame(Game {
+                                                        state: Some(state.to_state()),
+                                                        ..game.clone()
+                                                    }),
+                                                ))
                                                 .await;
                                         }
                                     }
@@ -327,15 +343,17 @@ pub async fn game_loop(
                                 }
                                 let guard = players.read().await;
                                 guard
-                                    .send_to_all(ServerMessage::Competitive(ServerMessageInner::UpdateGame(Game {
-                                        state: Some(CompetitiveState {
-                                            chat: global_chat.clone(),
-                                            countdown: ctdwn,
-                                            tries_used: 0,
-                                            word: words[0].word(),
+                                    .send_to_all(ServerMessage::Competitive(
+                                        ServerMessageInner::UpdateGame(Game {
+                                            state: Some(CompetitiveState {
+                                                chat: global_chat.clone(),
+                                                countdown: ctdwn,
+                                                tries_used: 0,
+                                                word: words[0].word(),
+                                            }),
+                                            ..game.clone()
                                         }),
-                                        ..game.clone()
-                                    })))
+                                    ))
                                     .await;
                                 tokio::spawn(round_countdown(
                                     code,

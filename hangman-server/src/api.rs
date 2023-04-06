@@ -11,10 +11,9 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use futures::{SinkExt, StreamExt};
+use futures::{stream::SplitSink, SinkExt, StreamExt};
 use hangman_data::{CreateGameBody, GameCode, ServerMessage, User};
 use std::borrow::Cow;
-use futures::stream::SplitSink;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 use tungstenite::Error;
@@ -111,7 +110,10 @@ async fn handle_socket(
     });
 }
 
-fn spawn_message_forwarder(mut sender: SplitSink<WebSocket, Message>, nickname: String) -> mpsc::Sender<ServerMessage> {
+fn spawn_message_forwarder(
+    mut sender: SplitSink<WebSocket, Message>,
+    nickname: String,
+) -> mpsc::Sender<ServerMessage> {
     // Send out messages sent to the internal client socket
     let (tx, mut rx) = mpsc::channel::<ServerMessage>(1);
     tokio::spawn(async move {

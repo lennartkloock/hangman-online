@@ -4,9 +4,9 @@ use crate::sender_utils::send_to_all;
 use hangman_data::{ChatMessage, ClientMessage, ServerMessage, User, UserToken};
 use std::{
     collections::HashMap,
+    fmt::Debug,
     ops::{Deref, DerefMut},
 };
-use std::fmt::Debug;
 use tokio::sync::mpsc;
 
 pub mod competitive;
