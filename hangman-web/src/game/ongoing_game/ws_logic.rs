@@ -1,12 +1,16 @@
-use crate::game::ongoing_game::{game_logic, ClientState, ConnectionError};
+use crate::game::ongoing_game::{ClientState, ConnectionError};
 use dioxus::prelude::*;
 use futures::{
     stream::{SplitSink, SplitStream},
-    SinkExt, StreamExt,
+    FutureExt, SinkExt, StreamExt,
 };
 use gloo_net::websocket::{futures::WebSocket, Message, WebSocketError};
-use hangman_data::{ClientMessage, ServerMessage};
+use hangman_data::{
+    ClientMessage, CompetitiveState, Game, GameMode, GameSettings, ServerMessage, TeamState,
+};
 use log::debug;
+use serde::de::Error;
+use std::collections::HashMap;
 
 pub fn connect(
     state: &UseRef<ClientState>,
@@ -33,7 +37,7 @@ pub async fn ws_read(ws_rx: Option<SplitStream<WebSocket>>, state: UseRef<Client
         while let Some(msg) = ws_read.next().await {
             match msg {
                 Ok(Message::Text(s)) => match serde_json::from_str::<ServerMessage>(&s) {
-                    Ok(msg) => game_logic::handle_message(msg, &state),
+                    Ok(msg) => state.set(msg.into()),
                     Err(e) => state.set(ClientState::Error(
                         ConnectionError::DeserializeError(e).rc(),
                     )),

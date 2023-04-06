@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use crate::{Game, Score};
+use crate::{CompetitiveState, Game, Score, TeamState};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -33,7 +33,14 @@ impl Default for ChatColor {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]
-pub enum ServerMessage<State> {
+pub enum ServerMessageInner<State> {
     UpdateGame(Game<State>),
     Results(Vec<Score>),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case", tag = "type", content = "data")]
+pub enum ServerMessage {
+    Team(ServerMessageInner<TeamState>),
+    Competitive(ServerMessageInner<CompetitiveState>),
 }

@@ -157,7 +157,6 @@ pub struct GameSettings {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct TeamState {
-    pub players: Vec<String>,
     pub chat: Vec<ChatMessage>,
     pub tries_used: u32,
     pub word: String,
@@ -165,7 +164,6 @@ pub struct TeamState {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct CompetitiveState {
-    pub players: Vec<String>,
     pub chat: Vec<ChatMessage>,
     pub tries_used: u32,
     pub word: String,
@@ -184,6 +182,7 @@ pub struct Score {
 pub struct Game<State> {
     pub owner_hash: UserToken,
     pub settings: GameSettings,
+    pub players: Vec<String>,
     pub state: Option<State>,
 }
 

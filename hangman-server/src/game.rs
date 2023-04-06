@@ -8,7 +8,7 @@ pub mod logic;
 
 #[derive(Clone, Debug)]
 pub struct GameManager {
-    games: Arc<Mutex<HashMap<GameCode, (GameMode, mpsc::Sender<GameMessage>)>>>,
+    games: Arc<Mutex<HashMap<GameCode, mpsc::Sender<GameMessage>>>>,
 }
 
 impl GameManager {
@@ -22,7 +22,6 @@ impl GameManager {
 impl GameManager {
     pub async fn add_game(&self, owner: UserToken, settings: GameSettings) -> GameCode {
         let code = GameCode::random();
-        let mode = settings.mode.clone();
         info!("new game: {}", code);
         let (tx, rx) = mpsc::channel(10);
         let games = Arc::clone(&self.games);
@@ -38,11 +37,11 @@ impl GameManager {
                 games.lock().await.remove(&code);
             }
         );
-        self.games.lock().await.insert(code, (mode, tx));
+        self.games.lock().await.insert(code, tx);
         code
     }
 
-    pub async fn get_game(&self, code: GameCode) -> Option<(GameMode, mpsc::Sender<GameMessage>)> {
-        self.games.lock().await.get(&code).map(|s| s.clone())
+    pub async fn get_game(&self, code: GameCode) -> Option<mpsc::Sender<GameMessage>> {
+        self.games.lock().await.get(&code).map(mpsc::Sender::clone)
     }
 }

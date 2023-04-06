@@ -12,15 +12,12 @@ use axum::{
     Json,
 };
 use futures::{SinkExt, StreamExt};
-use hangman_data::{CreateGameBody, GameCode, GameMode, ServerMessage, User};
+use hangman_data::{CreateGameBody, GameCode, ServerMessage, User};
 use std::borrow::Cow;
-use std::fmt::Debug;
 use futures::stream::SplitSink;
-use serde::Serialize;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 use tungstenite::Error;
-use crate::game::logic::GameMessageInner;
 
 pub async fn create_game(
     State(game_manager): State<GameManager>,
@@ -57,7 +54,7 @@ async fn handle_socket(
     socket: WebSocket,
     user: User,
     code: GameCode,
-    (mode, game_socket): (GameMode, mpsc::Sender<GameMessage>),
+    game_socket: mpsc::Sender<GameMessage>,
 ) {
     debug!("new ws connection by {} for game {code}", user.nickname);
     let (sender, mut receiver) = socket.split();
@@ -66,18 +63,9 @@ async fn handle_socket(
     let token = user.token;
 
     // Join Game
-    let game_message = match &mode {
-        GameMode::Team => {
-            let tx = spawn_message_forwarder(sender, user.nickname.clone());
-            GameMessage::Team(GameMessageInner::Join { user, sender: tx })
-        },
-        GameMode::Competitive => {
-            let tx = spawn_message_forwarder(sender, user.nickname.clone());
-            GameMessage::Competitive(GameMessageInner::Join { user, sender: tx })
-        },
-    };
+    let tx = spawn_message_forwarder(sender, user.nickname.clone());
     game_socket
-        .log_send(game_message)
+        .log_send(GameMessage::Join { user, sender: tx })
         .await;
 
     // Task that parses and sends client messages to the game socket
@@ -86,21 +74,13 @@ async fn handle_socket(
             match msg {
                 Ok(Message::Close(_)) => {
                     debug!("client sent closing frame");
-                    let game_message = match mode {
-                        GameMode::Team => GameMessage::Team(GameMessageInner::Leave(token)),
-                        GameMode::Competitive => GameMessage::Competitive(GameMessageInner::Leave(token)),
-                    };
-                    game_socket.log_send(game_message).await;
+                    game_socket.log_send(GameMessage::Leave(token)).await;
                     break;
                 }
                 Ok(msg) => match msg.to_text().map(serde_json::from_str) {
                     Ok(Ok(message)) => {
-                        let game_message = match &mode {
-                            GameMode::Team => GameMessage::Team(GameMessageInner::ClientMessage { token, message }),
-                            GameMode::Competitive => GameMessage::Competitive(GameMessageInner::ClientMessage { token, message }),
-                        };
                         if game_socket
-                            .log_send(game_message)
+                            .log_send(GameMessage::ClientMessage { token, message })
                             .await
                             .is_some()
                         {
@@ -120,11 +100,7 @@ async fn handle_socket(
                     ) = *b
                     {
                         debug!("client closed connection without closing frame");
-                        let game_message = match &mode {
-                            GameMode::Team => GameMessage::Team(GameMessageInner::Leave(token)),
-                            GameMode::Competitive => GameMessage::Competitive(GameMessageInner::Leave(token)),
-                        };
-                        game_socket.log_send(game_message).await;
+                        game_socket.log_send(GameMessage::Leave(token)).await;
                         break;
                     } else {
                         warn!("failed to receive ws message: {}", *b);
@@ -135,10 +111,9 @@ async fn handle_socket(
     });
 }
 
-// Todo: Too many bounds for State?
-fn spawn_message_forwarder<State: Debug + Serialize + Send + Sync + 'static>(mut sender: SplitSink<WebSocket, Message>, nickname: String) -> mpsc::Sender<ServerMessage<State>> {
+fn spawn_message_forwarder(mut sender: SplitSink<WebSocket, Message>, nickname: String) -> mpsc::Sender<ServerMessage> {
     // Send out messages sent to the internal client socket
-    let (tx, mut rx) = mpsc::channel::<ServerMessage<State>>(1);
+    let (tx, mut rx) = mpsc::channel::<ServerMessage>(1);
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             trace!("sending {msg:?} to {}", nickname);

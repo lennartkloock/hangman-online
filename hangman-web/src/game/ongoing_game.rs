@@ -14,13 +14,13 @@ use dioxus_router::use_router;
 use gloo_net::websocket::WebSocketError;
 use gloo_utils::errors::JsError;
 use hangman_data::{
-    ChatColor, ChatMessage, ClientMessage, Game, GameResults, GameSettings, GameState, User,
+    ChatColor, ChatMessage, ClientMessage, CompetitiveState, Game, GameSettings, Score,
+    ServerMessage, ServerMessageInner, TeamState, User,
 };
 use log::error;
 use std::{rc::Rc, time::Duration};
 use thiserror::Error;
 
-mod game_logic;
 mod hangman;
 mod scoreboard;
 mod ws_logic;
@@ -60,9 +60,26 @@ impl ConnectionError {
 pub enum ClientState {
     /// waiting for connection and init message
     Loading,
-    Joined(Game),
+    JoinedTeam(Game<TeamState>),
+    JoinedCompetitive(Game<CompetitiveState>),
+    Results(Vec<Score>),
     /// Rc to make it cloneable
     Error(Rc<ConnectionError>),
+}
+
+impl From<ServerMessage> for ClientState {
+    fn from(value: ServerMessage) -> Self {
+        match value {
+            ServerMessage::Team(ServerMessageInner::UpdateGame(game)) => Self::JoinedTeam(game),
+            ServerMessage::Competitive(ServerMessageInner::UpdateGame(game)) => {
+                Self::JoinedCompetitive(game)
+            }
+            ServerMessage::Team(ServerMessageInner::Results(scores))
+            | ServerMessage::Competitive(ServerMessageInner::Results(scores)) => {
+                Self::Results(scores)
+            }
+        }
+    }
 }
 
 #[inline_props]
@@ -109,7 +126,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: Rc::clone(e),
             }))
         }
-        ClientState::Joined(Game::Waiting { owner_hash, settings }) => {
+        ClientState::JoinedTeam(Game { owner_hash, settings, state: None, .. }) | ClientState::JoinedCompetitive(Game { owner_hash, settings, state: None, .. }) => {
             let is_owner = *owner_hash == user.token.hashed();
             cx.render(rsx!(
                 Header { code: *code, settings: settings.clone(), countdown: None }
@@ -126,66 +143,59 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 Footer { show_next_round: is_owner, next_round_text: "Start Game", ws_write: ws_write }
             ))
         },
-        ClientState::Joined(Game::Started { settings, state, .. }) => cx.render(rsx!(StartedGame {
-            code: *code,
-            settings: settings.clone(),
-            state: state.clone(),
-            show_next_round: false,
-            ws_write: ws_write,
-        })),
-        ClientState::Joined(Game::Finished {
-            settings,
-            state,
-            results,
-            ..
-        }) => match results {
-            GameResults::Team => cx.render(rsx!(StartedGame {
+        ClientState::JoinedTeam(Game { settings, state: Some(state), players, .. }) => cx.render(rsx!(
+            StartedGame {
                 code: *code,
                 settings: settings.clone(),
-                state: state.clone(),
-                show_next_round: true,
-                ws_write: ws_write,
-            })),
-            GameResults::Competitive(scores) => cx.render(rsx!(
-                Header { code: *code, countdown: None }
-                CenterContainer {
-                    Scoreboard { scores: scores.clone() }
-                }
-                Footer { show_next_round: true, ws_write: ws_write }
-            )),
-        },
+                players: players.clone(),
+                tries_used: state.tries_used,
+                chat: state.chat.clone(),
+                word: state.word.clone(),
+                show_next_round: false,
+                ws_write: ws_write
+            }
+        )),
+        ClientState::JoinedCompetitive(Game { settings, state: Some(state), players, .. }) => cx.render(rsx!(
+            StartedGame {
+                code: *code,
+                settings: settings.clone(),
+                players: players.clone(),
+                tries_used: state.tries_used,
+                chat: state.chat.clone(),
+                word: state.word.clone(),
+                countdown: state.countdown,
+                show_next_round: false,
+                ws_write: ws_write
+            }
+        )),
+        ClientState::Results(scores) => cx.render(rsx!(
+            Header { code: *code, countdown: None }
+            CenterContainer {
+                Scoreboard { scores: scores.clone() }
+            }
+            Footer { show_next_round: true, ws_write: ws_write }
+        )),
     })
 }
 
+// TODO: WTF is this prop mess
 #[inline_props]
 fn StartedGame<'a>(
     cx: Scope<'a>,
     code: GameCode,
     settings: GameSettings,
-    state: GameState,
+    players: Vec<String>,
+    tries_used: u32,
+    chat: Vec<ChatMessage>,
+    word: String,
+    countdown: Option<chrono::DateTime<Utc>>,
     show_next_round: bool,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let (players, chat, tries_used, word, countdown) = match state {
-        GameState::Team {
-            players,
-            chat,
-            tries_used,
-            word,
-        } => (players, chat, tries_used, word, None),
-        GameState::Competitive {
-            players,
-            chat,
-            tries_used,
-            word,
-            countdown,
-        } => (players, chat, tries_used, word, Some(countdown)),
-    };
-
     let router = use_router(cx);
 
     cx.render(rsx!(
-        Header { code: *code, settings: settings.clone(), countdown: countdown.copied() }
+        Header { code: *code, settings: settings.clone(), countdown: *countdown }
         div {
             class: "h-full flex items-center",
             div {

@@ -1,7 +1,7 @@
 //! Game logic
 
 use crate::sender_utils::send_to_all;
-use hangman_data::{ChatMessage, ClientMessage, CompetitiveState, ServerMessage, TeamState, User, UserToken};
+use hangman_data::{ChatMessage, ClientMessage, ServerMessage, User, UserToken};
 use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
@@ -15,15 +15,9 @@ mod word;
 
 #[derive(Debug)]
 pub enum GameMessage {
-    Team(GameMessageInner<TeamState>),
-    Competitive(GameMessageInner<CompetitiveState>),
-}
-
-#[derive(Debug)]
-pub enum GameMessageInner<S> {
     Join {
         user: User,
-        sender: mpsc::Sender<ServerMessage<S>>,
+        sender: mpsc::Sender<ServerMessage>,
     },
     Leave(UserToken),
     ClientMessage {
@@ -47,25 +41,25 @@ pub fn leave_message(name: &str) -> ChatMessage {
 }
 
 #[derive(Debug)]
-pub struct Players<S>(HashMap<UserToken, (mpsc::Sender<ServerMessage<S>>, User)>);
+pub struct Players(HashMap<UserToken, (mpsc::Sender<ServerMessage>, User)>);
 
-impl<S: Debug + Clone> Players<S> {
+impl Players {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub async fn add_player(&mut self, tx: mpsc::Sender<ServerMessage<S>>, user: User) {
+    pub async fn add_player(&mut self, tx: mpsc::Sender<ServerMessage>, user: User) {
         self.insert(user.token, (tx, user));
     }
 
     pub async fn remove_player(
         &mut self,
         token: &UserToken,
-    ) -> Option<(mpsc::Sender<ServerMessage<S>>, User)> {
+    ) -> Option<(mpsc::Sender<ServerMessage>, User)> {
         self.remove(token)
     }
 
-    pub async fn send_to_all(&self, msg: ServerMessage<S>) {
+    pub async fn send_to_all(&self, msg: ServerMessage) {
         send_to_all(self.iter().map(|(_, (s, _))| s), msg).await;
     }
 
@@ -74,15 +68,15 @@ impl<S: Debug + Clone> Players<S> {
     }
 }
 
-impl<S> Deref for Players<S> {
-    type Target = HashMap<UserToken, (mpsc::Sender<ServerMessage<S>>, User)>;
+impl Deref for Players {
+    type Target = HashMap<UserToken, (mpsc::Sender<ServerMessage>, User)>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<S> DerefMut for Players<S> {
+impl DerefMut for Players {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

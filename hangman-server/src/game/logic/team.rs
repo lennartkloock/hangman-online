@@ -6,10 +6,9 @@ use crate::{
     },
     word_generator,
 };
-use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, ServerMessage, TeamState, UserToken};
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, ServerMessage, ServerMessageInner, TeamState, UserToken};
 use tokio::sync::mpsc;
 use tracing::{debug, info, log::warn};
-use crate::game::logic::GameMessageInner;
 
 pub async fn game_loop(
     mut rx: mpsc::Receiver<GameMessage>,
@@ -23,29 +22,30 @@ pub async fn game_loop(
     let mut game = Game::<TeamState> {
         owner_hash: owner.hashed(),
         settings: settings.clone(),
+        players: vec![],
         state: None,
     };
     let mut finished = false;
 
     'game_loop:
-    while let Some(GameMessage::Team(msg)) = rx.recv().await {
+    while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
         match msg {
-            GameMessageInner::Join { user, sender } => {
+            GameMessage::Join { user, sender } => {
                 info!("[{code}] {} joins the game", user.nickname);
                 let nickname = user.nickname.clone();
-                players.add_player(sender.clone(), user).await;
+                players.add_player(sender, user).await;
                 chat.push(join_message(&nickname));
                 // If game is started
+                game.players = players.player_names();
                 if let Some(state) = &mut game.state {
-                    state.players = players.player_names();
                     state.chat = chat.clone();
                 }
                 players
-                    .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
                     .await;
             }
-            GameMessageInner::Leave(token) => {
+            GameMessage::Leave(token) => {
                 let Some((_, user)) = players.remove_player(&token).await else {
                     warn!("[{code}] there was no user in this game with this token");
                     return;
@@ -55,12 +55,12 @@ pub async fn game_loop(
                 chat.push(leave_message(&user.nickname));
 
                 // If game is started
+                game.players = players.player_names();
                 if let Some(state) = &mut game.state {
-                    state.players = players.player_names();
                     state.chat = chat.clone();
                 }
                 players
-                    .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
                     .await;
 
                 if players.is_empty() {
@@ -71,7 +71,7 @@ pub async fn game_loop(
                     break 'game_loop;
                 }
             }
-            GameMessageInner::ClientMessage { message, token } => {
+            GameMessage::ClientMessage { message, token } => {
                 if let Some((_, user)) = players.get(&token) {
                     match message {
                         ClientMessage::ChatMessage(message) => {
@@ -118,7 +118,7 @@ pub async fn game_loop(
                                 }
                                 state.chat = chat.clone();
                                 players
-                                    .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
                                     .await;
                             }
                         }
@@ -132,13 +132,12 @@ pub async fn game_loop(
                                         ..Default::default()
                                     });
                                     game.state = Some(TeamState {
-                                        players: players.player_names(),
                                         chat: chat.clone(),
                                         tries_used: 0,
                                         word: word.word(),
                                     });
                                     players
-                                        .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                                        .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
                                         .await;
                                 } else {
                                     warn!(
@@ -159,7 +158,7 @@ pub async fn game_loop(
                                 state.chat = chat.clone();
                                 state.word = word.word();
                                 players
-                                    .send_to_all(ServerMessage::UpdateGame(game.clone()))
+                                    .send_to_all(ServerMessage::Team(ServerMessageInner::UpdateGame(game.clone())))
                                     .await;
                                 info!("[{code}] {} started next round", user.nickname);
                             },
