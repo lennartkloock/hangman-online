@@ -2,15 +2,11 @@ use crate::game::ongoing_game::{ClientState, ConnectionError};
 use dioxus::prelude::*;
 use futures::{
     stream::{SplitSink, SplitStream},
-    FutureExt, SinkExt, StreamExt,
+    SinkExt, StreamExt,
 };
 use gloo_net::websocket::{futures::WebSocket, Message, WebSocketError};
-use hangman_data::{
-    ClientMessage, CompetitiveState, Game, GameMode, GameSettings, ServerMessage, TeamState,
-};
+use hangman_data::{ClientMessage, ServerMessage};
 use log::debug;
-use serde::de::Error;
-use std::collections::HashMap;
 
 pub fn connect(
     state: &UseRef<ClientState>,
