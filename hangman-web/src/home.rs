@@ -43,14 +43,14 @@ pub fn Home(cx: Scope) -> Element {
     ))
 }
 
-fn animate_title(step: u32) -> Option<String> {
+fn animate_title(step: u32) -> Option<&'static str> {
     match step {
-        0 => Some("_______".to_string()),
-        1 => Some("_a___a_".to_string()),
-        2 => Some("_an__an".to_string()),
-        3 => Some("Han__an".to_string()),
-        4 => Some("Hang_an".to_string()),
-        5 => Some("Hangman".to_string()),
+        0 => Some("_______"),
+        1 => Some("_a___a_"),
+        2 => Some("_an__an"),
+        3 => Some("Han__an"),
+        4 => Some("Hang_an"),
+        5 => Some("Hangman"),
         _ => None,
     }
 }

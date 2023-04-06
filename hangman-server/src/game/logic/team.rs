@@ -6,14 +6,10 @@ use crate::{
     },
     word_generator,
 };
-use hangman_data::{
-    ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameResults, GameSettings, GameState,
-    ServerMessage, UserToken,
-};
+use hangman_data::{ChatColor, ChatMessage, ClientMessage, Game, GameCode, GameSettings, ServerMessage, TeamState, UserToken};
 use tokio::sync::mpsc;
 use tracing::{debug, info, log::warn};
-
-// TODO: This code is shit, too much duplication and too similar to competitive code
+use crate::game::logic::GameMessageInner;
 
 pub async fn game_loop(
     mut rx: mpsc::Receiver<GameMessage>,
@@ -23,38 +19,33 @@ pub async fn game_loop(
 ) {
     let mut players = Players::new();
     let mut chat = vec![];
-    let mut tries_used = 0;
     let mut word = Word::new(word_generator::generate_word(&settings).await);
-    let mut game = Game::Waiting {
+    let mut game = Game::<TeamState> {
         owner_hash: owner.hashed(),
         settings: settings.clone(),
+        state: None,
     };
+    let mut finished = false;
 
-    while let Some(msg) = rx.recv().await {
+    'game_loop:
+    while let Some(GameMessage::Team(msg)) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
         match msg {
-            GameMessage::Join { user, sender } => {
+            GameMessageInner::Join { user, sender } => {
                 info!("[{code}] {} joins the game", user.nickname);
                 let nickname = user.nickname.clone();
                 players.add_player(sender.clone(), user).await;
                 chat.push(join_message(&nickname));
-                if matches!(game, Game::Started { .. }) {
-                    game = Game::Started {
-                        settings: settings.clone(),
-                        owner_hash: owner.hashed(),
-                        state: GameState::Team {
-                            players: players.player_names(),
-                            chat: chat.clone(),
-                            tries_used,
-                            word: word.word(),
-                        },
-                    };
+                // If game is started
+                if let Some(state) = &mut game.state {
+                    state.players = players.player_names();
+                    state.chat = chat.clone();
                 }
                 players
                     .send_to_all(ServerMessage::UpdateGame(game.clone()))
                     .await;
             }
-            GameMessage::Leave(token) => {
+            GameMessageInner::Leave(token) => {
                 let Some((_, user)) = players.remove_player(&token).await else {
                     warn!("[{code}] there was no user in this game with this token");
                     return;
@@ -63,17 +54,10 @@ pub async fn game_loop(
 
                 chat.push(leave_message(&user.nickname));
 
-                if matches!(game, Game::Started { .. }) {
-                    game = Game::Started {
-                        settings: settings.clone(),
-                        owner_hash: owner.hashed(),
-                        state: GameState::Team {
-                            players: players.player_names(),
-                            chat: chat.clone(),
-                            tries_used,
-                            word: word.word(),
-                        },
-                    };
+                // If game is started
+                if let Some(state) = &mut game.state {
+                    state.players = players.player_names();
+                    state.chat = chat.clone();
                 }
                 players
                     .send_to_all(ServerMessage::UpdateGame(game.clone()))
@@ -81,22 +65,24 @@ pub async fn game_loop(
 
                 if players.is_empty() {
                     info!("[{code}] all players left the game, closing");
-                    break;
+                    break 'game_loop;
                 } else if token == owner {
                     info!("[{code}] the game owner left the game, closing");
-                    break;
+                    break 'game_loop;
                 }
             }
-            GameMessage::ClientMessage { message, token } => {
+            GameMessageInner::ClientMessage { message, token } => {
                 if let Some((_, user)) = players.get(&token) {
                     match message {
                         ClientMessage::ChatMessage(message) => {
-                            if matches!(game, Game::Started { .. }) {
+                            // If game is started
+                            if let Some(state) = &mut game.state {
                                 let guess = word.guess(message.clone());
+                                state.word = word.word();
                                 match guess {
                                     GuessResult::Miss => {
                                         info!("[{code}] {} guessed wrong", user.nickname);
-                                        tries_used += 1;
+                                        state.tries_used += 1;
                                     }
                                     GuessResult::Hit => {
                                         info!("[{code}] {} guessed right", user.nickname);
@@ -112,7 +98,7 @@ pub async fn game_loop(
                                     color: guess.clone().into(),
                                 });
 
-                                if guess == GuessResult::Solved || tries_used == 9 {
+                                if guess == GuessResult::Solved || state.tries_used == 9 {
                                     if guess == GuessResult::Solved {
                                         chat.push(ChatMessage {
                                             content: "You guessed the word!".to_string(),
@@ -129,52 +115,27 @@ pub async fn game_loop(
                                             ..Default::default()
                                         });
                                     }
-                                    game = Game::Finished {
-                                        settings: settings.clone(),
-                                        owner_hash: owner.hashed(),
-                                        state: GameState::Team {
-                                            players: players.player_names(),
-                                            chat: chat.clone(),
-                                            tries_used,
-                                            word: word.word(),
-                                        },
-                                        results: GameResults::Team,
-                                    };
-                                } else {
-                                    game = Game::Started {
-                                        settings: settings.clone(),
-                                        owner_hash: owner.hashed(),
-                                        state: GameState::Team {
-                                            players: players.player_names(),
-                                            chat: chat.clone(),
-                                            tries_used,
-                                            word: word.word(),
-                                        },
-                                    };
                                 }
+                                state.chat = chat.clone();
                                 players
                                     .send_to_all(ServerMessage::UpdateGame(game.clone()))
                                     .await;
                             }
                         }
-                        ClientMessage::NextRound => match game {
-                            Game::Waiting { .. } => {
+                        ClientMessage::NextRound => match &mut game.state {
+                            None => {
                                 if user.token == owner {
                                     info!("[{code}] {} started the game", user.nickname);
                                     chat.push(ChatMessage {
                                         content: format!("{} started the game", user.nickname),
                                         ..Default::default()
                                     });
-                                    game = Game::Started {
-                                        settings: settings.clone(),
-                                        owner_hash: owner.hashed(),
-                                        state: GameState::Team {
-                                            players: players.player_names(),
-                                            chat: chat.clone(),
-                                            tries_used,
-                                            word: word.word(),
-                                        },
-                                    };
+                                    game.state = Some(TeamState {
+                                        players: players.player_names(),
+                                        chat: chat.clone(),
+                                        tries_used: 0,
+                                        word: word.word(),
+                                    });
                                     players
                                         .send_to_all(ServerMessage::UpdateGame(game.clone()))
                                         .await;
@@ -184,33 +145,25 @@ pub async fn game_loop(
                                         user.nickname
                                     );
                                 }
-                            }
-                            Game::Started { .. } => {
-                                warn!("can't start a new round when game is still `Started`");
-                            }
-                            Game::Finished { .. } => {
+                            },
+                            Some(state) if finished => {
                                 chat.retain(|m| m.from.is_none());
-                                tries_used = 0;
+                                state.tries_used = 0;
                                 word = Word::new(word_generator::generate_word(&settings).await);
                                 chat.push(ChatMessage {
                                     content: format!("{} started a new round", user.nickname),
                                     ..Default::default()
                                 });
-                                game = Game::Started {
-                                    settings: settings.clone(),
-                                    owner_hash: owner.hashed(),
-                                    state: GameState::Team {
-                                        players: players.player_names(),
-                                        chat: chat.clone(),
-                                        tries_used,
-                                        word: word.word(),
-                                    },
-                                };
+                                state.chat = chat.clone();
+                                state.word = word.word();
                                 players
                                     .send_to_all(ServerMessage::UpdateGame(game.clone()))
                                     .await;
                                 info!("[{code}] {} started next round", user.nickname);
-                            }
+                            },
+                            Some(_) => {
+                                warn!("can't start a new round when game is still `Started`");
+                            },
                         },
                     }
                 } else {

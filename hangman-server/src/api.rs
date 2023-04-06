@@ -12,11 +12,13 @@ use axum::{
     Json,
 };
 use futures::{SinkExt, StreamExt};
-use hangman_data::{CreateGameBody, GameCode, User};
+use hangman_data::{CreateGameBody, GameCode, GameMode, ServerMessage, User};
 use std::borrow::Cow;
+use futures::stream::SplitSink;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 use tungstenite::Error;
+use crate::game::logic::GameMessageInner;
 
 pub async fn create_game(
     State(game_manager): State<GameManager>,
@@ -32,8 +34,8 @@ pub async fn game_ws(
     Query(user): Query<User>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    if let Some(game_socket) = game_manager.get_game(code).await {
-        ws.on_upgrade(move |socket| handle_socket(socket, user, code, game_socket))
+    if let Some(game) = game_manager.get_game(code).await {
+        ws.on_upgrade(move |socket| handle_socket(socket, user, code, game))
     } else {
         ws.on_upgrade(move |mut socket| async move {
             if let Err(e) = socket
@@ -53,17 +55,90 @@ async fn handle_socket(
     socket: WebSocket,
     user: User,
     code: GameCode,
-    game_socket: mpsc::Sender<GameMessage>,
+    (mode, game_socket): (GameMode, mpsc::Sender<GameMessage>),
 ) {
     debug!("new ws connection by {} for game {code}", user.nickname);
-    let (mut sender, mut receiver) = socket.split();
+    let (sender, mut receiver) = socket.split();
 
+    // Copy user token
+    let token = user.token;
+
+    // Join Game
+    let game_message = match &mode {
+        GameMode::Team => {
+            let tx = spawn_message_forwarder(sender, user.nickname.clone());
+            GameMessage::Team(GameMessageInner::Join { user, sender: tx })
+        },
+        GameMode::Competitive => {
+            let tx = spawn_message_forwarder(sender, user.nickname.clone());
+            GameMessage::Competitive(GameMessageInner::Join { user, sender: tx })
+        },
+    };
+    game_socket
+        .log_send(game_message)
+        .await;
+
+    // Task that parses and sends client messages to the game socket
+    tokio::spawn(async move {
+        while let Some(msg) = receiver.next().await {
+            match msg {
+                Ok(Message::Close(_)) => {
+                    debug!("client sent closing frame");
+                    let game_message = match mode {
+                        GameMode::Team => GameMessage::Team(GameMessageInner::Leave(token)),
+                        GameMode::Competitive => GameMessage::Competitive(GameMessageInner::Leave(token)),
+                    };
+                    game_socket.log_send(game_message).await;
+                    break;
+                }
+                Ok(msg) => match msg.to_text().map(serde_json::from_str) {
+                    Ok(Ok(message)) => {
+                        let game_message = match &mode {
+                            GameMode::Team => GameMessage::Team(GameMessageInner::ClientMessage { token, message }),
+                            GameMode::Competitive => GameMessage::Competitive(GameMessageInner::ClientMessage { token, message }),
+                        };
+                        if game_socket
+                            .log_send(game_message)
+                            .await
+                            .is_some()
+                        {
+                            break;
+                        }
+                    }
+                    Ok(Err(e)) => warn!("failed to parse ws message: {e}"),
+                    Err(e) => warn!("failed to parse ws message as text: {e}"),
+                },
+                Err(e) => {
+                    let b = e
+                        .into_inner()
+                        .downcast::<Error>()
+                        .expect("failed to downcast axum error to tungstenite error");
+                    if let Error::Protocol(
+                        tungstenite::error::ProtocolError::ResetWithoutClosingHandshake,
+                    ) = *b
+                    {
+                        debug!("client closed connection without closing frame");
+                        let game_message = match &mode {
+                            GameMode::Team => GameMessage::Team(GameMessageInner::Leave(token)),
+                            GameMode::Competitive => GameMessage::Competitive(GameMessageInner::Leave(token)),
+                        };
+                        game_socket.log_send(game_message).await;
+                        break;
+                    } else {
+                        warn!("failed to receive ws message: {}", *b);
+                    }
+                }
+            }
+        }
+    });
+}
+
+fn spawn_message_forwarder<State>(mut sender: SplitSink<WebSocket, Message>, nickname: String) -> mpsc::Sender<ServerMessage<State>> {
     // Send out messages sent to the internal client socket
-    let (tx, mut rx) = mpsc::channel(1);
-    let nick = user.nickname.clone();
+    let (tx, mut rx) = mpsc::channel::<ServerMessage<State>>(1);
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            trace!("sending {msg:?} to {}", nick);
+            trace!("sending {msg:?} to {}", nickname);
             match serde_json::to_string(&msg) {
                 Ok(t) => {
                     if let Err(e) = sender.send(Message::Text(t)).await {
@@ -94,54 +169,5 @@ async fn handle_socket(
             }
         }
     });
-
-    // Copy user token
-    let token = user.token;
-
-    // Join Game
-    game_socket
-        .log_send(GameMessage::Join { user, sender: tx })
-        .await;
-
-    // Task that parses and sends client messages to the game socket
-    tokio::spawn(async move {
-        while let Some(msg) = receiver.next().await {
-            match msg {
-                Ok(Message::Close(_)) => {
-                    debug!("client sent closing frame");
-                    game_socket.log_send(GameMessage::Leave(token)).await;
-                    break;
-                }
-                Ok(msg) => match msg.to_text().map(serde_json::from_str) {
-                    Ok(Ok(message)) => {
-                        if game_socket
-                            .log_send(GameMessage::ClientMessage { token, message })
-                            .await
-                            .is_some()
-                        {
-                            break;
-                        }
-                    }
-                    Ok(Err(e)) => warn!("failed to parse ws message: {e}"),
-                    Err(e) => warn!("failed to parse ws message as text: {e}"),
-                },
-                Err(e) => {
-                    let b = e
-                        .into_inner()
-                        .downcast::<Error>()
-                        .expect("failed to downcast axum error to tungstenite error");
-                    if let Error::Protocol(
-                        tungstenite::error::ProtocolError::ResetWithoutClosingHandshake,
-                    ) = *b
-                    {
-                        debug!("client closed connection without closing frame");
-                        game_socket.log_send(GameMessage::Leave(token)).await;
-                        break;
-                    } else {
-                        warn!("failed to receive ws message: {}", *b);
-                    }
-                }
-            }
-        }
-    });
+    tx
 }

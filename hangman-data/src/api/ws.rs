@@ -1,4 +1,4 @@
-use crate::Game;
+use crate::{Game, Score};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -32,6 +32,7 @@ impl Default for ChatColor {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type", content = "data")]
-pub enum ServerMessage {
-    UpdateGame(Game),
+pub enum ServerMessage<State> {
+    UpdateGame(Game<State>),
+    Results(Vec<Score>),
 }

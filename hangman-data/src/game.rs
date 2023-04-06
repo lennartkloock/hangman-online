@@ -156,21 +156,20 @@ pub struct GameSettings {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum GameState {
-    Team {
-        players: Vec<String>,
-        chat: Vec<ChatMessage>,
-        tries_used: u32,
-        word: String,
-    },
-    Competitive {
-        players: Vec<String>,
-        chat: Vec<ChatMessage>,
-        tries_used: u32,
-        word: String,
-        countdown: chrono::DateTime<Utc>,
-    },
+pub struct TeamState {
+    pub players: Vec<String>,
+    pub chat: Vec<ChatMessage>,
+    pub tries_used: u32,
+    pub word: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct CompetitiveState {
+    pub players: Vec<String>,
+    pub chat: Vec<ChatMessage>,
+    pub tries_used: u32,
+    pub word: String,
+    pub countdown: chrono::DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -181,31 +180,11 @@ pub struct Score {
     pub score: u32,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum GameResults {
-    Team,
-    Competitive(Vec<Score>),
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case", tag = "type", content = "data")]
-pub enum Game {
-    Waiting {
-        owner_hash: UserToken,
-        settings: GameSettings,
-    },
-    Started {
-        owner_hash: UserToken,
-        settings: GameSettings,
-        state: GameState,
-    },
-    Finished {
-        owner_hash: UserToken,
-        settings: GameSettings,
-        state: GameState,
-        results: GameResults,
-    },
+pub struct Game<State> {
+    pub owner_hash: UserToken,
+    pub settings: GameSettings,
+    pub state: Option<State>,
 }
 
 #[cfg(test)]

@@ -9,7 +9,7 @@ pub mod logic;
 
 #[derive(Clone, Debug)]
 pub struct GameManager {
-    games: Arc<Mutex<HashMap<GameCode, mpsc::Sender<GameMessage>>>>,
+    games: Arc<Mutex<HashMap<GameCode, (GameMode, mpsc::Sender<GameMessage>)>>>,
 }
 
 impl GameManager {
@@ -18,7 +18,9 @@ impl GameManager {
             games: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
 
+impl GameManager {
     pub async fn add_game(&self, owner: UserToken, settings: GameSettings) -> GameCode {
         let code = GameCode::random();
         info!("new game: {}", code);
@@ -32,17 +34,15 @@ impl GameManager {
                         logic::competitive::game_loop(rx, code, settings, owner).await
                     }
                 }
-            }
-            .then(move |_| async move {
                 debug!("[{code}] game loop finished, removing game");
                 games.lock().await.remove(&code);
-            }),
+            }
         );
-        self.games.lock().await.insert(code, tx);
+        self.games.lock().await.insert(code, (settings.mode.clone(), tx));
         code
     }
 
-    pub async fn get_game(&self, code: GameCode) -> Option<mpsc::Sender<GameMessage>> {
+    pub async fn get_game(&self, code: GameCode) -> Option<(GameMode, mpsc::Sender<GameMessage>)> {
         self.games.lock().await.get(&code).map(mpsc::Sender::clone)
     }
 }
