@@ -100,14 +100,7 @@ pub async fn game_loop(
     let mut global_chat = vec![];
     let mut words = vec![Word::new(word_generator::generate_word(&settings).await)];
     let mut countdown = None;
-    let results = Arc::new(Mutex::new(None));
-
-    tokio::spawn(round_countdown(
-        code,
-        Arc::clone(&players),
-        Arc::clone(&player_states),
-        Arc::clone(&results),
-    ));
+    let results = Arc::new(Mutex::new(None::<Vec<Score>>));
 
     while let Some(GameMessage::Competitive(msg)) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
@@ -309,6 +302,12 @@ pub async fn game_loop(
                                                 .await;
                                         }
                                     }
+                                    tokio::spawn(round_countdown(
+                                        code,
+                                        Arc::clone(&players),
+                                        Arc::clone(&player_states),
+                                        Arc::clone(&results),
+                                    ));
                                 } else {
                                     warn!(
                                         "{} tried to start the game, but is not owner",
