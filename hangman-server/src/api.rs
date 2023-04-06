@@ -14,7 +14,9 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use hangman_data::{CreateGameBody, GameCode, GameMode, ServerMessage, User};
 use std::borrow::Cow;
+use std::fmt::Debug;
 use futures::stream::SplitSink;
+use serde::Serialize;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 use tungstenite::Error;
@@ -133,7 +135,8 @@ async fn handle_socket(
     });
 }
 
-fn spawn_message_forwarder<State>(mut sender: SplitSink<WebSocket, Message>, nickname: String) -> mpsc::Sender<ServerMessage<State>> {
+// Todo: Too many bounds for State?
+fn spawn_message_forwarder<State: Debug + Serialize + Send + Sync + 'static>(mut sender: SplitSink<WebSocket, Message>, nickname: String) -> mpsc::Sender<ServerMessage<State>> {
     // Send out messages sent to the internal client socket
     let (tx, mut rx) = mpsc::channel::<ServerMessage<State>>(1);
     tokio::spawn(async move {

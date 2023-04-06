@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crate::{Game, Score};
 use serde::{Deserialize, Serialize};
 

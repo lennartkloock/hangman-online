@@ -6,6 +6,7 @@ use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
 };
+use std::fmt::Debug;
 use tokio::sync::mpsc;
 
 pub mod competitive;
@@ -48,7 +49,7 @@ pub fn leave_message(name: &str) -> ChatMessage {
 #[derive(Debug)]
 pub struct Players<S>(HashMap<UserToken, (mpsc::Sender<ServerMessage<S>>, User)>);
 
-impl<S> Players<S> {
+impl<S: Debug + Clone> Players<S> {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
@@ -86,40 +87,3 @@ impl<S> DerefMut for Players<S> {
         &mut self.0
     }
 }
-
-// pub struct Chat {
-//     players: Arc<RwLock<Players>>,
-//     messages: Vec<ChatMessage>,
-// }
-//
-// impl Chat {
-//     pub fn new(players: Arc<RwLock<Players>>) -> Self {
-//         Self {
-//             players,
-//             messages: vec![],
-//         }
-//     }
-//
-//     pub async fn send_message(&mut self, msg: ChatMessage) {
-//         self.messages.push(msg.clone());
-//         self.players
-//             .read()
-//             .await
-//             .send_to_all(ServerMessage::ChatMessage(msg))
-//             .await;
-//     }
-// }
-//
-// impl Deref for Chat {
-//     type Target = Vec<ChatMessage>;
-//
-//     fn deref(&self) -> &Self::Target {
-//         &self.messages
-//     }
-// }
-//
-// impl DerefMut for Chat {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.messages
-//     }
-// }
