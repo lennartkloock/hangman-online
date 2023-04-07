@@ -27,6 +27,11 @@ html {
     @apply bg-zinc-700 transition-all focus:ring ring-zinc-500 outline-transparent;
 }
 
+.waiting-container {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas: "players spinner .";
+}
+
 .game-container {
     grid-template-columns: 1fr auto 1fr;
     grid-template-areas:

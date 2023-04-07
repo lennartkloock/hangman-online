@@ -126,17 +126,24 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 error: Rc::clone(e),
             }))
         }
-        ClientState::JoinedTeam(Game { owner_hash, settings, state: None, .. }) | ClientState::JoinedCompetitive(Game { owner_hash, settings, state: None, .. }) => {
+        ClientState::JoinedTeam(Game { owner_hash, settings, players, state: None })
+        | ClientState::JoinedCompetitive(Game { owner_hash, settings, players, state: None, .. }) => {
             let is_owner = *owner_hash == user.token.hashed();
             cx.render(rsx!(
                 Header { code: *code, settings: settings.clone(), countdown: None }
-                CenterContainer {
+                div {
+                    class: "h-full flex items-center",
                     div {
-                        class: "flex flex-col gap-2",
-                        div { class: "race-by" }
-                        p {
-                            class: "text-2xl",
-                            "Waiting..."
+                        class: "grid waiting-container w-full items-center h-64",
+                        Players { players: players.clone() }
+                        div {
+                            class: "flex flex-col gap-2",
+                            style: "grid-area: spinner",
+                            div { class: "race-by" }
+                            p {
+                                class: "text-2xl",
+                                "Waiting..."
+                            }
                         }
                     }
                 }
@@ -192,8 +199,6 @@ fn StartedGame<'a>(
     show_next_round: bool,
     ws_write: &'a Coroutine<ClientMessage>,
 ) -> Element<'a> {
-    let router = use_router(cx);
-
     cx.render(rsx!(
         Header { code: *code, settings: settings.clone(), countdown: *countdown }
         div {
@@ -202,27 +207,7 @@ fn StartedGame<'a>(
                 class: "grid game-container gap-y-2 w-full",
 
                 // Players
-                div {
-                    style: "grid-area: players",
-                    class: "justify-self-start bg-zinc-800 p-2 rounded-r-lg flex flex-col",
-                    ul {
-                        class: "flex flex-col gap-2 grow",
-                        players
-                            .iter()
-                            .map(|p| rsx!(
-                                li {
-                                    class: "flex items-center gap-1",
-                                    MaterialIcon { name: "account_circle", color: MaterialIconColor::Light, size: 30 }
-                                    "{p}"
-                                }
-                            ))
-                    }
-                    button {
-                        class: "base-button hover:bg-red-700/70 ring-zinc-700/50",
-                        onclick: move |_| router.navigate_to("/"),
-                        "Leave"
-                    }
-                }
+                Players { players: players.clone() }
 
                 // Word
                 h1 {
@@ -247,6 +232,35 @@ fn StartedGame<'a>(
             }
         }
         Footer { show_next_round: *show_next_round, ws_write: ws_write }
+    ))
+}
+
+#[inline_props]
+fn Players(cx: Scope, players: Vec<String>) -> Element {
+    let router = use_router(cx);
+
+    cx.render(rsx!(
+        div {
+            style: "grid-area: players",
+            class: "justify-self-start self-stretch bg-zinc-800 p-2 rounded-r-lg flex flex-col",
+            ul {
+                class: "flex flex-col gap-2 grow",
+                players
+                    .iter()
+                    .map(|p| rsx!(
+                        li {
+                            class: "flex items-center gap-1",
+                            MaterialIcon { name: "account_circle", color: MaterialIconColor::Light, size: 30 }
+                            "{p}"
+                        }
+                    ))
+            }
+            button {
+                class: "base-button hover:bg-red-700/70 ring-zinc-700/50",
+                onclick: move |_| router.navigate_to("/"),
+                "Leave"
+            }
+        }
     ))
 }
 
