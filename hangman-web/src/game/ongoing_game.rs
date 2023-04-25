@@ -158,7 +158,7 @@ pub fn OngoingGame<'a>(cx: Scope<'a>, code: GameCode, user: &'a User) -> Element
                 tries_used: state.tries_used,
                 chat: state.chat.clone(),
                 word: state.word.clone(),
-                show_next_round: false,
+                show_next_round: state.round_finished,
                 ws_write: ws_write
             }
         )),

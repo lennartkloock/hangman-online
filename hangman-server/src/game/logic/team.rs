@@ -104,7 +104,8 @@ pub async fn game_loop(
                                     color: guess.clone().into(),
                                 });
 
-                                if guess == GuessResult::Solved || state.tries_used == 9 {
+                                state.round_finished = guess == GuessResult::Solved || state.tries_used == 9;
+                                if state.round_finished {
                                     if guess == GuessResult::Solved {
                                         chat.push(ChatMessage {
                                             content: "You guessed the word!".to_string(),
@@ -143,6 +144,7 @@ pub async fn game_loop(
                                         chat: chat.clone(),
                                         tries_used: 0,
                                         word: word.word(),
+                                        round_finished: false,
                                     });
                                     players
                                         .send_to_all(ServerMessage::Team(
@@ -167,6 +169,7 @@ pub async fn game_loop(
                                 });
                                 state.chat = chat.clone();
                                 state.word = word.word();
+                                state.round_finished = false;
                                 players
                                     .send_to_all(ServerMessage::Team(
                                         ServerMessageInner::UpdateGame(game.clone()),

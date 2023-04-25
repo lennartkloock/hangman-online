@@ -160,6 +160,7 @@ pub struct TeamState {
     pub chat: Vec<ChatMessage>,
     pub tries_used: u32,
     pub word: String,
+    pub round_finished: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
