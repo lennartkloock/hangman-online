@@ -28,7 +28,6 @@ pub async fn game_loop(
         players: vec![],
         state: None,
     };
-    let mut finished = false;
 
     'game_loop: while let Some(msg) = rx.recv().await {
         debug!("[{code}] received {msg:?}");
@@ -135,7 +134,6 @@ pub async fn game_loop(
                             None => {
                                 if user.token == owner {
                                     info!("[{code}] {} started the game", user.nickname);
-                                    finished = true;
                                     chat.push(ChatMessage {
                                         content: format!("{} started the game", user.nickname),
                                         ..Default::default()
@@ -158,8 +156,7 @@ pub async fn game_loop(
                                     );
                                 }
                             }
-                            Some(state) if finished => {
-                                finished = false;
+                            Some(state) if state.round_finished => {
                                 chat.retain(|m| m.from.is_none());
                                 state.tries_used = 0;
                                 word = Word::new(word_generator::generate_word(&settings).await);
