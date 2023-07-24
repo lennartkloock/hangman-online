@@ -23,7 +23,7 @@ async-trait = "0.1.65"
 
 axum = { version = "0.6.9", features = ["ws"] }
 tower-http = { version = "0.4.0", features = ["fs", "trace"] }
-tungstenite = "0.19.0" # To use error type
+tungstenite = "0.20.0" # To use error type
 
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
